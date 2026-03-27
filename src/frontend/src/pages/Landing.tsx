@@ -3,17 +3,15 @@ import {
   ArrowRight,
   BarChart3,
   Brain,
-  Check,
   ChevronDown,
   Shield,
-  Star,
-  TrendingUp,
   Zap,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import PricingSection from "../components/PricingSection";
 import { useGetAllProducts } from "../hooks/useQueries";
 
 const FADE_UP = {
@@ -46,73 +44,6 @@ const FEATURES = [
   },
 ];
 
-const PRICING = [
-  {
-    tier: "PropLite",
-    price: "$49",
-    period: "/month",
-    desc: "Perfect for retail traders starting their prop journey",
-    features: [
-      "MT4 & MT5 Support",
-      "1 Account License",
-      "VRR Engine",
-      "Email Support",
-      "Quarterly Updates",
-    ],
-    cta: "Get PropLite",
-    highlight: false,
-  },
-  {
-    tier: "PropTrader",
-    price: "$99",
-    period: "/month",
-    desc: "Designed for active traders managing multiple accounts",
-    features: [
-      "MT4, MT5 & cTrader",
-      "3 Account Licenses",
-      "VRR + Emotion Control",
-      "Priority Support",
-      "Monthly Updates",
-      "Risk Reporting Dashboard",
-    ],
-    cta: "Get PropTrader",
-    highlight: true,
-  },
-  {
-    tier: "PropPro",
-    price: "$199",
-    period: "/month",
-    desc: "For professional traders and fund managers",
-    features: [
-      "All Platforms",
-      "10 Account Licenses",
-      "Full Suite (VRR + EC + SH)",
-      "24/7 Live Support",
-      "Weekly Updates",
-      "API Access",
-      "White-Label Option",
-    ],
-    cta: "Get PropPro",
-    highlight: false,
-  },
-  {
-    tier: "PropEnterprise",
-    price: "Custom",
-    period: "",
-    desc: "Enterprise-grade for prop firms and trading desks",
-    features: [
-      "Unlimited Accounts",
-      "Custom Integration",
-      "Dedicated Manager",
-      "SLA Guarantee",
-      "On-site Training",
-      "Full Customisation",
-    ],
-    cta: "Contact Sales",
-    highlight: false,
-  },
-];
-
 const FAQS = [
   {
     q: "Which trading platforms are supported?",
@@ -124,7 +55,7 @@ const FAQS = [
   },
   {
     q: "Can I use one license on multiple accounts?",
-    a: "Each plan specifies the number of account slots. PropLite allows 1 account, PropTrader allows 3, and PropPro allows up to 10. You can add or swap account numbers within your license limit at any time.",
+    a: "Each plan specifies the number of account slots. You can add additional account licenses at checkout or later from your dashboard. Swap account numbers within your license limit at any time.",
   },
   {
     q: "What payment methods do you accept?",
@@ -178,7 +109,6 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="relative pt-24 pb-20 lg:pt-32 lg:pb-28 overflow-hidden candlestick-bg">
-        {/* Gradient overlays */}
         <div className="absolute inset-0 pointer-events-none">
           <div
             className="absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-10"
@@ -192,7 +122,6 @@ export default function Landing() {
 
         <div className="max-w-7xl mx-auto px-6 lg:px-14 relative">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Left */}
             <motion.div variants={STAGGER} initial="hidden" animate="show">
               <motion.div
                 variants={FADE_UP}
@@ -226,24 +155,24 @@ export default function Landing() {
                 emotion control, and intelligent hedging.
               </motion.p>
               <motion.div variants={FADE_UP} className="flex flex-wrap gap-4">
-                <Link to="/register">
+                <a href="/#pricing">
                   <button
                     type="button"
                     className="gold-glow-btn px-7 py-3 rounded-full text-sm font-bold flex items-center gap-2"
                     data-ocid="hero.primary_button"
                   >
-                    Explore Subscriptions <ArrowRight className="w-4 h-4" />
+                    View Pricing <ArrowRight className="w-4 h-4" />
                   </button>
-                </Link>
-                <a href="/#pricing">
+                </a>
+                <Link to="/register">
                   <button
                     type="button"
                     className="teal-outline-btn px-7 py-3 rounded-full text-sm font-semibold"
                     data-ocid="hero.secondary_button"
                   >
-                    View Platform Demo
+                    Create Account
                   </button>
-                </a>
+                </Link>
               </motion.div>
               <motion.div
                 variants={FADE_UP}
@@ -273,7 +202,6 @@ export default function Landing() {
               }}
               className="relative hidden lg:flex flex-col gap-4"
             >
-              {/* Main chart card */}
               <div
                 className="rounded-2xl border p-5 teal-glow-border"
                 style={{
@@ -298,7 +226,6 @@ export default function Landing() {
                     +0.34%
                   </span>
                 </div>
-                {/* Mini chart bars */}
                 <div className="flex items-end gap-1 h-14">
                   {[60, 45, 70, 55, 80, 65, 90, 72, 85, 95, 78, 88].map(
                     (h, i) => (
@@ -318,8 +245,7 @@ export default function Landing() {
                 </div>
               </div>
 
-              {/* Stats row */}
-              <div className="grid grid-cols-2 gap-4 animate-float">
+              <div className="grid grid-cols-2 gap-4">
                 <div
                   className="rounded-xl border border-border p-4"
                   style={{ background: "oklch(0.115 0.022 245)" }}
@@ -352,7 +278,6 @@ export default function Landing() {
                 </div>
               </div>
 
-              {/* License status card */}
               <div
                 className="rounded-xl border border-border p-4 flex items-center gap-3"
                 style={{ background: "oklch(0.115 0.022 245)" }}
@@ -539,14 +464,14 @@ export default function Landing() {
                   >
                     ${item.price || (item[1] as any)?.price}
                   </span>
-                  <Link to="/register">
+                  <a href="/#pricing">
                     <button
                       type="button"
                       className="text-xs px-3 py-1.5 rounded-full font-semibold teal-outline-btn"
                     >
                       Claim Offer
                     </button>
-                  </Link>
+                  </a>
                 </div>
               </motion.div>
             ))}
@@ -554,141 +479,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-6 lg:px-14">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-14"
-          >
-            <div
-              className="text-xs font-bold uppercase tracking-widest mb-3"
-              style={{ color: "oklch(0.72 0.135 185)" }}
-            >
-              TRANSPARENT PRICING
-            </div>
-            <h2 className="text-3xl lg:text-4xl font-extrabold text-foreground">
-              Choose Your Edge
-            </h2>
-            <p className="mt-4 text-muted-foreground max-w-xl mx-auto text-sm">
-              Cancel anytime. All plans include automatic license generation and
-              direct file delivery.
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={STAGGER}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-2 xl:grid-cols-4 gap-5"
-          >
-            {PRICING.map((plan, i) => (
-              <motion.div
-                key={plan.tier}
-                variants={FADE_UP}
-                className={`rounded-2xl border overflow-hidden flex flex-col transition-all duration-300 ${
-                  plan.highlight
-                    ? "teal-glow-border scale-[1.02]"
-                    : "border-border card-hover"
-                }`}
-                style={{
-                  background: plan.highlight
-                    ? "oklch(0.13 0.025 243)"
-                    : "oklch(0.115 0.022 245)",
-                }}
-              >
-                {/* Gold header strip */}
-                <div
-                  className="h-1.5"
-                  style={{
-                    background: plan.highlight
-                      ? "linear-gradient(90deg, oklch(0.72 0.135 185), oklch(0.55 0.14 190))"
-                      : "linear-gradient(90deg, oklch(0.68 0.12 70), oklch(0.75 0.13 75))",
-                  }}
-                />
-                <div className="p-6 flex flex-col flex-1">
-                  {plan.highlight && (
-                    <div className="flex items-center gap-1 mb-2">
-                      <Star
-                        className="w-3 h-3"
-                        style={{ color: "oklch(0.72 0.135 185)" }}
-                        fill="oklch(0.72 0.135 185)"
-                      />
-                      <span
-                        className="text-xs font-bold"
-                        style={{ color: "oklch(0.72 0.135 185)" }}
-                      >
-                        MOST POPULAR
-                      </span>
-                    </div>
-                  )}
-                  <div className="font-extrabold text-foreground text-lg mb-1">
-                    {plan.tier}
-                  </div>
-                  <div className="flex items-baseline gap-1 mb-2">
-                    <span
-                      className="text-3xl font-extrabold"
-                      style={{ color: "oklch(0.71 0.115 72)" }}
-                    >
-                      {plan.price}
-                    </span>
-                    {plan.period && (
-                      <span className="text-xs text-muted-foreground">
-                        {plan.period}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
-                    {plan.desc}
-                  </p>
-                  <ul className="space-y-2.5 flex-1 mb-6">
-                    {plan.features.map((feat) => (
-                      <li
-                        key={feat}
-                        className="flex items-center gap-2.5 text-sm text-foreground/90"
-                      >
-                        <Check
-                          className="w-3.5 h-3.5 flex-shrink-0"
-                          style={{ color: "oklch(0.72 0.135 185)" }}
-                          strokeWidth={2.5}
-                        />
-                        {feat}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    to={
-                      plan.tier === "PropEnterprise" ? "/register" : "/register"
-                    }
-                  >
-                    <button
-                      type="button"
-                      className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all ${
-                        plan.highlight ? "" : "gold-glow-btn"
-                      }`}
-                      style={
-                        plan.highlight
-                          ? {
-                              background:
-                                "linear-gradient(135deg, oklch(0.72 0.135 185), oklch(0.55 0.14 190))",
-                              color: "oklch(0.065 0.009 258)",
-                            }
-                          : undefined
-                      }
-                      data-ocid={`pricing.item.${i + 1}`}
-                    >
-                      {plan.cta}
-                    </button>
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+      {/* Pricing Section — replaced with PricingSection component */}
+      <PricingSection />
 
       {/* FAQ */}
       <section
@@ -757,15 +549,15 @@ export default function Landing() {
                 profitability.
               </p>
               <div className="flex flex-wrap justify-center gap-4">
-                <Link to="/register">
+                <a href="/#pricing">
                   <button
                     type="button"
                     className="gold-glow-btn px-8 py-3 rounded-full font-bold text-sm flex items-center gap-2"
                     data-ocid="cta.primary_button"
                   >
-                    Start Free Trial <ArrowRight className="w-4 h-4" />
+                    Get Started <ArrowRight className="w-4 h-4" />
                   </button>
-                </Link>
+                </a>
                 <Link to="/login">
                   <button
                     type="button"

@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, FileText, Loader2 } from "lucide-react";
+import { Download, ExternalLink, File, FileText, Loader2 } from "lucide-react";
 import { LicenseStatus } from "../../backend";
-import { useGetAllProducts } from "../../hooks/useQueries";
-import { useGetMyLicenses } from "../../hooks/useQueries";
+import { useGetDownloadableFiles } from "../../hooks/useAdminSettingsQueries";
+import { useGetAllProducts, useGetMyLicenses } from "../../hooks/useQueries";
 
 const FILE_TYPES = [
   { ext: ".ex4", label: "MT4 Expert Advisor", color: "oklch(0.72 0.135 185)" },
@@ -13,12 +13,31 @@ const FILE_TYPES = [
 export default function Downloads() {
   const { data: products, isLoading: productsLoading } = useGetAllProducts();
   const { data: licenses } = useGetMyLicenses();
+  const { data: downloadableFiles, isLoading: filesLoading } =
+    useGetDownloadableFiles();
 
   const activeLicPlatforms = new Set(
     licenses
       ?.filter(([, l]) => l.status === LicenseStatus.Active)
       .map(([, l]) => l.platform) ?? [],
   );
+
+  const activeProductIds = new Set(
+    licenses
+      ?.filter(([, l]) => l.status === LicenseStatus.Active)
+      .map(([, l]) => l.productId.toString()) ?? [],
+  );
+
+  const generalFiles =
+    downloadableFiles?.filter(([, f]) => f.category === "General") ?? [];
+  const productFiles =
+    downloadableFiles?.filter(([, f]) => f.category === "Per Product") ?? [];
+  const accessibleProductFiles = productFiles.filter(
+    ([, f]) =>
+      f.productId !== undefined &&
+      activeProductIds.has(f.productId!.toString()),
+  );
+  const allAccessibleFiles = [...generalFiles, ...accessibleProductFiles];
 
   return (
     <div data-ocid="downloads.page">
@@ -164,6 +183,110 @@ export default function Downloads() {
           })}
         </div>
       )}
+
+      {/* Resources & Documents Section */}
+      <div className="mt-10">
+        <div className="mb-4">
+          <h2 className="text-base font-bold text-foreground">
+            Resources &amp; Documents
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Guides, manuals, and supplementary files provided by PropFolio.
+          </p>
+        </div>
+
+        {filesLoading ? (
+          <div
+            className="flex items-center justify-center py-10"
+            data-ocid="downloads.loading_state"
+          >
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          </div>
+        ) : allAccessibleFiles.length === 0 ? (
+          <div
+            className="rounded-xl border border-border p-10 text-center"
+            style={{ background: "oklch(0.115 0.022 245)" }}
+            data-ocid="downloads.resources.empty_state"
+          >
+            <File className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">
+              No resources available yet.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Check back later — guides and documents will appear here when
+              published.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {allAccessibleFiles.map(([id, file], i) => (
+              <div
+                key={id.toString()}
+                className="rounded-xl border border-border p-4 flex items-center justify-between gap-4"
+                style={{ background: "oklch(0.115 0.022 245)" }}
+                data-ocid={`downloads.resources.item.${i + 1}`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: "oklch(0.72 0.135 185 / 0.1)" }}
+                  >
+                    <File
+                      className="w-4 h-4"
+                      style={{ color: "oklch(0.72 0.135 185)" }}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {file.name}
+                    </p>
+                    {file.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                        {file.description}
+                      </p>
+                    )}
+                    <span
+                      className="inline-block text-xs px-1.5 py-0.5 rounded-full font-medium mt-1"
+                      style={
+                        file.category === "General"
+                          ? {
+                              background: "oklch(0.72 0.135 185 / 0.15)",
+                              color: "oklch(0.72 0.135 185)",
+                            }
+                          : {
+                              background: "oklch(0.71 0.115 72 / 0.15)",
+                              color: "oklch(0.71 0.115 72)",
+                            }
+                      }
+                    >
+                      {file.category}
+                    </span>
+                  </div>
+                </div>
+                <a
+                  href={file.fileUrl.getDirectURL()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-shrink-0"
+                  data-ocid="downloads.resources.button"
+                >
+                  <Button
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    variant="outline"
+                    style={{
+                      borderColor: "oklch(0.72 0.135 185 / 0.4)",
+                      color: "oklch(0.72 0.135 185)",
+                    }}
+                  >
+                    <Download className="w-3 h-3" /> Download
+                  </Button>
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

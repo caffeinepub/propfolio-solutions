@@ -5,11 +5,13 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import {
+  FolderOpen,
   LayoutDashboard,
   LogOut,
   Menu,
   MessageSquare,
   Package,
+  Settings,
   Shield,
   ShoppingCart,
   Tag,
@@ -31,6 +33,8 @@ const NAV = [
   { label: "Wallets", path: "/admin/wallets", icon: Wallet },
   { label: "Affiliates", path: "/admin/affiliates", icon: Users },
   { label: "Support", path: "/admin/support", icon: MessageSquare },
+  { label: "Files", path: "/admin/files", icon: FolderOpen },
+  { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
 export default function AdminDashboard() {
@@ -42,7 +46,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!isLoading && !isAdminLoading) {
-      if (!isLoggedIn) navigate({ to: "/login" });
+      if (!isLoggedIn) navigate({ to: "/admin-login" });
       else if (!isAdmin) navigate({ to: "/dashboard" });
     }
   }, [isLoading, isAdminLoading, isLoggedIn, isAdmin, navigate]);
@@ -109,7 +113,7 @@ export default function AdminDashboard() {
         </div>
 
         <nav
-          className="flex-1 py-4 px-3 space-y-0.5"
+          className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto"
           aria-label="Admin navigation"
         >
           {NAV.map((item) => {

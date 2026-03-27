@@ -10,6 +10,20 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AdminAccount {
+  'username' : string,
+  'createdAt' : bigint,
+  'principalId' : string,
+}
+export interface DownloadableFile {
+  'id' : bigint,
+  'name' : string,
+  'description' : string,
+  'productId' : [] | [bigint],
+  'category' : string,
+  'uploadedAt' : bigint,
+  'fileUrl' : ExternalBlob,
+}
 export type ExternalBlob = Uint8Array;
 export interface License {
   'maxAccounts' : bigint,
@@ -39,6 +53,14 @@ export interface Order {
 export type OrderStatus = { 'Approved' : null } |
   { 'Rejected' : null } |
   { 'Pending' : null };
+export interface PaymentGatewaySettings {
+  'usdtAddress' : string,
+  'ethAddress' : string,
+  'paymentInstructions' : string,
+  'ltcAddress' : string,
+  'enabledCoins' : Array<string>,
+  'btcAddress' : string,
+}
 export interface Product {
   'features' : Array<string>,
   'name' : string,
@@ -48,6 +70,17 @@ export interface Product {
   'isActive' : boolean,
   'price' : number,
   'fileUrl' : [] | [ExternalBlob],
+}
+export interface SiteSettings {
+  'tagline' : string,
+  'telegramUrl' : string,
+  'twitterUrl' : string,
+  'maintenanceMode' : boolean,
+  'siteName' : string,
+  'supportEmail' : string,
+  'contactEmail' : string,
+  'discordUrl' : string,
+  'youtubeUrl' : string,
 }
 export interface UserProfile {
   'name' : string,
@@ -85,22 +118,42 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addAdminAccount' : ActorMethod<[string, string], undefined>,
   'approveOrder' : ActorMethod<[bigint], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createOrder' : ActorMethod<[bigint, number, string, string], bigint>,
   'createProduct' : ActorMethod<[Product], bigint>,
+  'deleteDownloadableFile' : ActorMethod<[bigint], undefined>,
   'deleteProduct' : ActorMethod<[bigint], undefined>,
+  'extendLicense' : ActorMethod<[bigint, bigint], undefined>,
+  'getAdminAccounts' : ActorMethod<[], Array<AdminAccount>>,
+  'getAllLicenses' : ActorMethod<[], Array<[bigint, License]>>,
   'getAllOrders' : ActorMethod<[], Array<[bigint, Order]>>,
   'getAllProducts' : ActorMethod<[], Array<[bigint, Product]>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getDownloadableFiles' : ActorMethod<[], Array<[bigint, DownloadableFile]>>,
   'getMyLicenses' : ActorMethod<[], Array<[bigint, License]>>,
   'getMyOrders' : ActorMethod<[], Array<[bigint, Order]>>,
+  'getPaymentGatewaySettings' : ActorMethod<[], PaymentGatewaySettings>,
   'getProduct' : ActorMethod<[bigint], [] | [Product]>,
+  'getSiteSettings' : ActorMethod<[], SiteSettings>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'isAdminRegistered' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'manuallyGenerateLicense' : ActorMethod<[string, bigint, bigint], bigint>,
+  'reassignLicense' : ActorMethod<[bigint, string], undefined>,
   'rejectOrder' : ActorMethod<[bigint], undefined>,
+  'removeAdminAccount' : ActorMethod<[string], undefined>,
+  'revokeLicense' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'saveDownloadableFile' : ActorMethod<[DownloadableFile], undefined>,
+  'savePaymentGatewaySettings' : ActorMethod<
+    [PaymentGatewaySettings],
+    undefined
+  >,
+  'saveSiteSettings' : ActorMethod<[SiteSettings], undefined>,
+  'setupFirstAdmin' : ActorMethod<[string], undefined>,
   'updateProduct' : ActorMethod<[bigint, Product], undefined>,
   'validateLicense' : ActorMethod<
     [string, string],

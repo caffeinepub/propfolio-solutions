@@ -35,6 +35,28 @@ export const Product = IDL.Record({
   'price' : IDL.Float64,
   'fileUrl' : IDL.Opt(ExternalBlob),
 });
+export const AdminAccount = IDL.Record({
+  'username' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'principalId' : IDL.Text,
+});
+export const LicenseStatus = IDL.Variant({
+  'Active' : IDL.Null,
+  'Revoked' : IDL.Null,
+  'Expired' : IDL.Null,
+});
+export const License = IDL.Record({
+  'maxAccounts' : IDL.Nat,
+  'status' : LicenseStatus,
+  'expiryDate' : IDL.Int,
+  'userId' : IDL.Principal,
+  'createdAt' : IDL.Int,
+  'productId' : IDL.Nat,
+  'platform' : IDL.Text,
+  'orderId' : IDL.Nat,
+  'licenseKey' : IDL.Text,
+  'accountNumbers' : IDL.Vec(IDL.Text),
+});
 export const OrderStatus = IDL.Variant({
   'Approved' : IDL.Null,
   'Rejected' : IDL.Null,
@@ -55,22 +77,33 @@ export const UserProfile = IDL.Record({
   'createdAt' : IDL.Int,
   'email' : IDL.Text,
 });
-export const LicenseStatus = IDL.Variant({
-  'Active' : IDL.Null,
-  'Revoked' : IDL.Null,
-  'Expired' : IDL.Null,
+export const DownloadableFile = IDL.Record({
+  'id' : IDL.Nat,
+  'name' : IDL.Text,
+  'description' : IDL.Text,
+  'productId' : IDL.Opt(IDL.Nat),
+  'category' : IDL.Text,
+  'uploadedAt' : IDL.Int,
+  'fileUrl' : ExternalBlob,
 });
-export const License = IDL.Record({
-  'maxAccounts' : IDL.Nat,
-  'status' : LicenseStatus,
-  'expiryDate' : IDL.Int,
-  'userId' : IDL.Principal,
-  'createdAt' : IDL.Int,
-  'productId' : IDL.Nat,
-  'platform' : IDL.Text,
-  'orderId' : IDL.Nat,
-  'licenseKey' : IDL.Text,
-  'accountNumbers' : IDL.Vec(IDL.Text),
+export const PaymentGatewaySettings = IDL.Record({
+  'usdtAddress' : IDL.Text,
+  'ethAddress' : IDL.Text,
+  'paymentInstructions' : IDL.Text,
+  'ltcAddress' : IDL.Text,
+  'enabledCoins' : IDL.Vec(IDL.Text),
+  'btcAddress' : IDL.Text,
+});
+export const SiteSettings = IDL.Record({
+  'tagline' : IDL.Text,
+  'telegramUrl' : IDL.Text,
+  'twitterUrl' : IDL.Text,
+  'maintenanceMode' : IDL.Bool,
+  'siteName' : IDL.Text,
+  'supportEmail' : IDL.Text,
+  'contactEmail' : IDL.Text,
+  'discordUrl' : IDL.Text,
+  'youtubeUrl' : IDL.Text,
 });
 
 export const idlService = IDL.Service({
@@ -101,6 +134,7 @@ export const idlService = IDL.Service({
     ),
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addAdminAccount' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'approveOrder' : IDL.Func([IDL.Nat], [IDL.Nat], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createOrder' : IDL.Func(
@@ -109,7 +143,15 @@ export const idlService = IDL.Service({
       [],
     ),
   'createProduct' : IDL.Func([Product], [IDL.Nat], []),
+  'deleteDownloadableFile' : IDL.Func([IDL.Nat], [], []),
   'deleteProduct' : IDL.Func([IDL.Nat], [], []),
+  'extendLicense' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+  'getAdminAccounts' : IDL.Func([], [IDL.Vec(AdminAccount)], ['query']),
+  'getAllLicenses' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Nat, License))],
+      ['query'],
+    ),
   'getAllOrders' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Nat, Order))],
@@ -122,21 +164,45 @@ export const idlService = IDL.Service({
     ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getDownloadableFiles' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Nat, DownloadableFile))],
+      ['query'],
+    ),
   'getMyLicenses' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Nat, License))],
       ['query'],
     ),
   'getMyOrders' : IDL.Func([], [IDL.Vec(IDL.Tuple(IDL.Nat, Order))], ['query']),
+  'getPaymentGatewaySettings' : IDL.Func(
+      [],
+      [PaymentGatewaySettings],
+      ['query'],
+    ),
   'getProduct' : IDL.Func([IDL.Nat], [IDL.Opt(Product)], ['query']),
+  'getSiteSettings' : IDL.Func([], [SiteSettings], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'isAdminRegistered' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'manuallyGenerateLicense' : IDL.Func(
+      [IDL.Text, IDL.Nat, IDL.Nat],
+      [IDL.Nat],
+      [],
+    ),
+  'reassignLicense' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'rejectOrder' : IDL.Func([IDL.Nat], [], []),
+  'removeAdminAccount' : IDL.Func([IDL.Text], [], []),
+  'revokeLicense' : IDL.Func([IDL.Nat], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'saveDownloadableFile' : IDL.Func([DownloadableFile], [], []),
+  'savePaymentGatewaySettings' : IDL.Func([PaymentGatewaySettings], [], []),
+  'saveSiteSettings' : IDL.Func([SiteSettings], [], []),
+  'setupFirstAdmin' : IDL.Func([IDL.Text], [], []),
   'updateProduct' : IDL.Func([IDL.Nat, Product], [], []),
   'validateLicense' : IDL.Func(
       [IDL.Text, IDL.Text],
@@ -183,6 +249,28 @@ export const idlFactory = ({ IDL }) => {
     'price' : IDL.Float64,
     'fileUrl' : IDL.Opt(ExternalBlob),
   });
+  const AdminAccount = IDL.Record({
+    'username' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'principalId' : IDL.Text,
+  });
+  const LicenseStatus = IDL.Variant({
+    'Active' : IDL.Null,
+    'Revoked' : IDL.Null,
+    'Expired' : IDL.Null,
+  });
+  const License = IDL.Record({
+    'maxAccounts' : IDL.Nat,
+    'status' : LicenseStatus,
+    'expiryDate' : IDL.Int,
+    'userId' : IDL.Principal,
+    'createdAt' : IDL.Int,
+    'productId' : IDL.Nat,
+    'platform' : IDL.Text,
+    'orderId' : IDL.Nat,
+    'licenseKey' : IDL.Text,
+    'accountNumbers' : IDL.Vec(IDL.Text),
+  });
   const OrderStatus = IDL.Variant({
     'Approved' : IDL.Null,
     'Rejected' : IDL.Null,
@@ -203,22 +291,33 @@ export const idlFactory = ({ IDL }) => {
     'createdAt' : IDL.Int,
     'email' : IDL.Text,
   });
-  const LicenseStatus = IDL.Variant({
-    'Active' : IDL.Null,
-    'Revoked' : IDL.Null,
-    'Expired' : IDL.Null,
+  const DownloadableFile = IDL.Record({
+    'id' : IDL.Nat,
+    'name' : IDL.Text,
+    'description' : IDL.Text,
+    'productId' : IDL.Opt(IDL.Nat),
+    'category' : IDL.Text,
+    'uploadedAt' : IDL.Int,
+    'fileUrl' : ExternalBlob,
   });
-  const License = IDL.Record({
-    'maxAccounts' : IDL.Nat,
-    'status' : LicenseStatus,
-    'expiryDate' : IDL.Int,
-    'userId' : IDL.Principal,
-    'createdAt' : IDL.Int,
-    'productId' : IDL.Nat,
-    'platform' : IDL.Text,
-    'orderId' : IDL.Nat,
-    'licenseKey' : IDL.Text,
-    'accountNumbers' : IDL.Vec(IDL.Text),
+  const PaymentGatewaySettings = IDL.Record({
+    'usdtAddress' : IDL.Text,
+    'ethAddress' : IDL.Text,
+    'paymentInstructions' : IDL.Text,
+    'ltcAddress' : IDL.Text,
+    'enabledCoins' : IDL.Vec(IDL.Text),
+    'btcAddress' : IDL.Text,
+  });
+  const SiteSettings = IDL.Record({
+    'tagline' : IDL.Text,
+    'telegramUrl' : IDL.Text,
+    'twitterUrl' : IDL.Text,
+    'maintenanceMode' : IDL.Bool,
+    'siteName' : IDL.Text,
+    'supportEmail' : IDL.Text,
+    'contactEmail' : IDL.Text,
+    'discordUrl' : IDL.Text,
+    'youtubeUrl' : IDL.Text,
   });
   
   return IDL.Service({
@@ -249,6 +348,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addAdminAccount' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'approveOrder' : IDL.Func([IDL.Nat], [IDL.Nat], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createOrder' : IDL.Func(
@@ -257,7 +357,15 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'createProduct' : IDL.Func([Product], [IDL.Nat], []),
+    'deleteDownloadableFile' : IDL.Func([IDL.Nat], [], []),
     'deleteProduct' : IDL.Func([IDL.Nat], [], []),
+    'extendLicense' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+    'getAdminAccounts' : IDL.Func([], [IDL.Vec(AdminAccount)], ['query']),
+    'getAllLicenses' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Nat, License))],
+        ['query'],
+      ),
     'getAllOrders' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Nat, Order))],
@@ -270,6 +378,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getDownloadableFiles' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Nat, DownloadableFile))],
+        ['query'],
+      ),
     'getMyLicenses' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Nat, License))],
@@ -280,15 +393,34 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(IDL.Tuple(IDL.Nat, Order))],
         ['query'],
       ),
+    'getPaymentGatewaySettings' : IDL.Func(
+        [],
+        [PaymentGatewaySettings],
+        ['query'],
+      ),
     'getProduct' : IDL.Func([IDL.Nat], [IDL.Opt(Product)], ['query']),
+    'getSiteSettings' : IDL.Func([], [SiteSettings], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'isAdminRegistered' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'manuallyGenerateLicense' : IDL.Func(
+        [IDL.Text, IDL.Nat, IDL.Nat],
+        [IDL.Nat],
+        [],
+      ),
+    'reassignLicense' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'rejectOrder' : IDL.Func([IDL.Nat], [], []),
+    'removeAdminAccount' : IDL.Func([IDL.Text], [], []),
+    'revokeLicense' : IDL.Func([IDL.Nat], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'saveDownloadableFile' : IDL.Func([DownloadableFile], [], []),
+    'savePaymentGatewaySettings' : IDL.Func([PaymentGatewaySettings], [], []),
+    'saveSiteSettings' : IDL.Func([SiteSettings], [], []),
+    'setupFirstAdmin' : IDL.Func([IDL.Text], [], []),
     'updateProduct' : IDL.Func([IDL.Nat, Product], [], []),
     'validateLicense' : IDL.Func(
         [IDL.Text, IDL.Text],

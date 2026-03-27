@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Loader2, TrendingUp } from "lucide-react";
+import { Loader2, ShieldCheck, TrendingUp } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
@@ -129,6 +129,23 @@ export default function Login() {
               Create an account
             </Link>
           </p>
+
+          {/* Admin Login - prominent divider section */}
+          <div className="mt-6 pt-5 border-t border-border/40">
+            <Link
+              to="/admin-login"
+              className="flex items-center justify-center gap-2 w-full rounded-xl border py-3 px-4 text-sm font-semibold transition-colors hover:opacity-90"
+              style={{
+                borderColor: "oklch(0.71 0.115 72 / 0.5)",
+                color: "oklch(0.71 0.115 72)",
+                background: "oklch(0.71 0.115 72 / 0.07)",
+              }}
+              data-ocid="login.admin_setup_link"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Site Owner / Admin Login
+            </Link>
+          </div>
         </div>
       </motion.div>
     </div>

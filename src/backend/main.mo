@@ -16,8 +16,11 @@ import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import Storage "blob-storage/Storage";
 import AccessControl "authorization/access-control";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
+  // Core user authentication and blob storage
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
   include MixinStorage();
@@ -169,10 +172,10 @@ actor {
       case (null) { Runtime.trap("Order not found") };
       case (?o) { o };
     };
-    
+
     // Generate license
     let licenseId = await generateLicense(orderId, order.userId, order.productId);
-    
+
     let updatedOrder = {
       order with
       status = #Approved;
@@ -239,10 +242,10 @@ actor {
       case (null) { Runtime.trap("Product not found") };
       case (?p) { p };
     };
-    
+
     let licenseId = nextLicenseId;
     nextLicenseId += 1;
-    
+
     let licenseKey = generateLicenseKey();
     let license : License = {
       orderId = orderId;
@@ -275,12 +278,12 @@ actor {
       case (null) { return null };
       case (?l) { l };
     };
-    
+
     let hasAccount = license.accountNumbers.find(func(acc) { acc == accountNumber });
     if (hasAccount == null and license.accountNumbers.size() >= license.maxAccounts) {
       return null;
     };
-    
+
     ?{
       status = license.status;
       expiryDate = license.expiryDate;
@@ -295,5 +298,284 @@ actor {
     licenseStore.entries().toArray().filter(func((id, license) : (Nat, License)) : Bool {
       license.userId == caller;
     });
+  };
+
+  // NEW: License Management (admin only)
+  public query ({ caller }) func getAllLicenses() : async [(Nat, License)] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view all licenses");
+    };
+    licenseStore.entries().toArray();
+  };
+
+  public shared ({ caller }) func revokeLicense(licenseId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can revoke licenses");
+    };
+    let license = switch (licenseStore.get(licenseId)) {
+      case (null) { Runtime.trap("License not found") };
+      case (?l) { l };
+    };
+    let updatedLicense = {
+      license with
+      status = #Revoked;
+    };
+    licenseStore.add(licenseId, updatedLicense);
+  };
+
+  public shared ({ caller }) func extendLicense(licenseId : Nat, extraDays : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can extend licenses");
+    };
+    let license = switch (licenseStore.get(licenseId)) {
+      case (null) { Runtime.trap("License not found") };
+      case (?l) { l };
+    };
+    let extraNanos = extraDays * 24 * 60 * 60 * 1_000_000_000;
+    let updatedLicense = {
+      license with
+      expiryDate = license.expiryDate + extraNanos;
+    };
+    licenseStore.add(licenseId, updatedLicense);
+  };
+
+  public shared ({ caller }) func reassignLicense(licenseId : Nat, newUserPrincipal : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can reassign licenses");
+    };
+    let license = switch (licenseStore.get(licenseId)) {
+      case (null) { Runtime.trap("License not found") };
+      case (?l) { l };
+    };
+    let newUserId = Principal.fromText(newUserPrincipal);
+    let updatedLicense = {
+      license with
+      userId = newUserId;
+    };
+    licenseStore.add(licenseId, updatedLicense);
+  };
+
+  public shared ({ caller }) func manuallyGenerateLicense(userId : Text, productId : Nat, durationDays : Nat) : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can manually generate licenses");
+    };
+    let product = switch (productStore.get(productId)) {
+      case (null) { Runtime.trap("Product not found") };
+      case (?p) { p };
+    };
+
+    let userPrincipal = Principal.fromText(userId);
+    let licenseId = nextLicenseId;
+    nextLicenseId += 1;
+
+    let licenseKey = generateLicenseKey();
+    let durationNanos = durationDays * 24 * 60 * 60 * 1_000_000_000;
+    let license : License = {
+      orderId = 0; // No order associated
+      userId = userPrincipal;
+      productId = productId;
+      licenseKey = licenseKey;
+      platform = product.platform;
+      accountNumbers = [];
+      maxAccounts = 5;
+      status = #Active;
+      expiryDate = Time.now() + durationNanos;
+      createdAt = Time.now();
+    };
+    licenseStore.add(licenseId, license);
+    licenseKeyIndex.add(licenseKey, licenseId);
+    licenseId;
+  };
+
+  // NEW: Site Settings
+  public type SiteSettings = {
+    siteName : Text;
+    tagline : Text;
+    contactEmail : Text;
+    supportEmail : Text;
+    maintenanceMode : Bool;
+    twitterUrl : Text;
+    telegramUrl : Text;
+    discordUrl : Text;
+    youtubeUrl : Text;
+  };
+
+  var siteSettings : SiteSettings = {
+    siteName = "PropFolio";
+    tagline = "Your Property Portfolio Manager";
+    contactEmail = "contact@propfolio.com";
+    supportEmail = "support@propfolio.com";
+    maintenanceMode = false;
+    twitterUrl = "";
+    telegramUrl = "";
+    discordUrl = "";
+    youtubeUrl = "";
+  };
+
+  public query func getSiteSettings() : async SiteSettings {
+    // Public access - anyone can read site settings
+    siteSettings;
+  };
+
+  public shared ({ caller }) func saveSiteSettings(settings : SiteSettings) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can save site settings");
+    };
+    siteSettings := settings;
+  };
+
+  // NEW: Payment Gateway Settings
+  public type PaymentGatewaySettings = {
+    enabledCoins : [Text];
+    paymentInstructions : Text;
+    btcAddress : Text;
+    ethAddress : Text;
+    usdtAddress : Text;
+    ltcAddress : Text;
+  };
+
+  var paymentGatewaySettings : PaymentGatewaySettings = {
+    enabledCoins = ["BTC", "ETH", "USDT", "LTC"];
+    paymentInstructions = "Please send payment to the address below";
+    btcAddress = "";
+    ethAddress = "";
+    usdtAddress = "";
+    ltcAddress = "";
+  };
+
+  public query func getPaymentGatewaySettings() : async PaymentGatewaySettings {
+    // Public access - anyone can read payment gateway settings
+    paymentGatewaySettings;
+  };
+
+  public shared ({ caller }) func savePaymentGatewaySettings(settings : PaymentGatewaySettings) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can save payment gateway settings");
+    };
+    paymentGatewaySettings := settings;
+  };
+
+  // NEW: Downloadable Files
+  public type DownloadableFile = {
+    id : Nat;
+    name : Text;
+    description : Text;
+    category : Text;
+    productId : ?Nat;
+    fileUrl : Storage.ExternalBlob;
+    uploadedAt : Int;
+  };
+
+  var nextDownloadableFileId = 1;
+  let downloadableFileStore = Map.empty<Nat, DownloadableFile>();
+
+  public query func getDownloadableFiles() : async [(Nat, DownloadableFile)] {
+    // Public access - anyone can view downloadable files
+    downloadableFileStore.entries().toArray();
+  };
+
+  public shared ({ caller }) func saveDownloadableFile(file : DownloadableFile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can save downloadable files");
+    };
+    let fileId = if (file.id == 0) {
+      let newId = nextDownloadableFileId;
+      nextDownloadableFileId += 1;
+      newId;
+    } else {
+      file.id;
+    };
+    let fileToSave = {
+      file with
+      id = fileId;
+    };
+    downloadableFileStore.add(fileId, fileToSave);
+  };
+
+  public shared ({ caller }) func deleteDownloadableFile(id : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete downloadable files");
+    };
+    downloadableFileStore.remove(id);
+  };
+
+  // NEW: Admin Account Management
+  public type AdminAccount = {
+    username : Text;
+    principalId : Text;
+    createdAt : Int;
+  };
+
+  let adminAccountStore = Map.empty<Principal, AdminAccount>();
+
+  public query ({ caller }) func getAdminAccounts() : async [AdminAccount] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view admin accounts");
+    };
+    adminAccountStore.values().toArray();
+  };
+
+  public shared ({ caller }) func addAdminAccount(username : Text, principalText : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can add admin accounts");
+    };
+    let newAdminPrincipal = Principal.fromText(principalText);
+    if (newAdminPrincipal.isAnonymous()) {
+      Runtime.trap("Cannot use anonymous principal as admin");
+    };
+    
+    // Grant admin role using AccessControl
+    AccessControl.assignRole(accessControlState, caller, newAdminPrincipal, #admin);
+    
+    // Store admin account info
+    let adminAccount : AdminAccount = {
+      username = username;
+      principalId = principalText;
+      createdAt = Time.now();
+    };
+    adminAccountStore.add(newAdminPrincipal, adminAccount);
+  };
+
+  public shared ({ caller }) func removeAdminAccount(principalText : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can remove admin accounts");
+    };
+    let targetPrincipal = Principal.fromText(principalText);
+    
+    // Cannot remove self
+    if (targetPrincipal == caller) {
+      Runtime.trap("Cannot remove your own admin account");
+    };
+    
+    // Revoke admin role using AccessControl
+    AccessControl.assignRole(accessControlState, caller, targetPrincipal, #user);
+    
+    // Remove from admin account store
+    adminAccountStore.remove(targetPrincipal);
+  };
+
+  // Admin Password Setup - allows first-time admin registration without Caffeine token
+  public shared ({ caller }) func setupFirstAdmin(principalText : Text) : async () {
+    if (accessControlState.adminAssigned) {
+      Runtime.trap("Admin is already configured");
+    };
+    let adminPrincipal = Principal.fromText(principalText);
+    if (adminPrincipal.isAnonymous()) {
+      Runtime.trap("Cannot use anonymous principal as admin");
+    };
+    accessControlState.userRoles.add(adminPrincipal, #admin);
+    accessControlState.adminAssigned := true;
+    
+    // Store first admin account
+    let adminAccount : AdminAccount = {
+      username = "First Admin";
+      principalId = principalText;
+      createdAt = Time.now();
+    };
+    adminAccountStore.add(adminPrincipal, adminAccount);
+  };
+
+  public query func isAdminRegistered() : async Bool {
+    accessControlState.adminAssigned;
   };
 };

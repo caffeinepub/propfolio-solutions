@@ -6,15 +6,20 @@ import {
   createRoute,
   createRouter,
 } from "@tanstack/react-router";
+import { AdminAuthProvider } from "./hooks/useAdminPasswordAuth";
+import AdminLogin from "./pages/AdminLogin";
+import AdminSetup from "./pages/AdminSetup";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminAffiliates from "./pages/admin/AdminAffiliates";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminFiles from "./pages/admin/AdminFiles";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminOverview from "./pages/admin/AdminOverview";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminPromotions from "./pages/admin/AdminPromotions";
+import AdminSettings from "./pages/admin/AdminSettings";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminWallets from "./pages/admin/AdminWallets";
 import Billing from "./pages/user/Billing";
@@ -27,10 +32,10 @@ import Support from "./pages/user/Support";
 
 const rootRoute = createRootRoute({
   component: () => (
-    <>
+    <AdminAuthProvider>
       <Outlet />
       <Toaster theme="dark" richColors />
-    </>
+    </AdminAuthProvider>
   ),
 });
 
@@ -48,6 +53,16 @@ const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
   component: Register,
+});
+const adminSetupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin-setup",
+  component: AdminSetup,
+});
+const adminLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin-login",
+  component: AdminLogin,
 });
 
 // User Dashboard Layout
@@ -128,11 +143,23 @@ const adminSupportRoute = createRoute({
   path: "/support",
   component: AdminSupport,
 });
+const adminSettingsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/settings",
+  component: AdminSettings,
+});
+const adminFilesRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/files",
+  component: AdminFiles,
+});
 
 const routeTree = rootRoute.addChildren([
   landingRoute,
   loginRoute,
   registerRoute,
+  adminSetupRoute,
+  adminLoginRoute,
   dashboardRoute.addChildren([
     dashboardIndexRoute,
     downloadsRoute,
@@ -149,6 +176,8 @@ const routeTree = rootRoute.addChildren([
     adminWalletsRoute,
     adminAffiliatesRoute,
     adminSupportRoute,
+    adminSettingsRoute,
+    adminFilesRoute,
   ]),
 ]);
 
