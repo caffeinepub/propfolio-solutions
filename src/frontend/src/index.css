@@ -1,0 +1,135 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.875rem;
+    --background: 0.065 0.009 258;
+    --foreground: 0.944 0.012 244;
+    --card: 0.115 0.022 245;
+    --card-foreground: 0.944 0.012 244;
+    --surface2: 0.135 0.028 243;
+    --popover: 0.14 0.025 243;
+    --popover-foreground: 0.944 0.012 244;
+    --primary: 0.72 0.135 185;
+    --primary-foreground: 0.065 0.009 258;
+    --secondary: 0.175 0.03 245;
+    --secondary-foreground: 0.944 0.012 244;
+    --gold: 0.71 0.115 72;
+    --gold-bright: 0.75 0.12 75;
+    --muted: 0.175 0.03 245;
+    --muted-foreground: 0.725 0.022 242;
+    --accent: 0.175 0.03 245;
+    --accent-foreground: 0.944 0.012 244;
+    --destructive: 0.577 0.245 27;
+    --destructive-foreground: 0.985 0 0;
+    --border: 0.22 0.037 242;
+    --input: 0.22 0.037 242;
+    --ring: 0.72 0.135 185;
+    --chart-1: 0.72 0.135 185;
+    --chart-2: 0.71 0.115 72;
+    --chart-3: 0.577 0.245 27;
+    --chart-4: 0.7 0.15 160;
+    --chart-5: 0.6 0.1 300;
+    --sidebar: 0.09 0.012 252;
+    --sidebar-foreground: 0.944 0.012 244;
+    --sidebar-primary: 0.72 0.135 185;
+    --sidebar-primary-foreground: 0.065 0.009 258;
+    --sidebar-accent: 0.175 0.03 245;
+    --sidebar-accent-foreground: 0.944 0.012 244;
+    --sidebar-border: 0.22 0.037 242;
+    --sidebar-ring: 0.72 0.135 185;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: oklch(0.065 0.009 258);
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.22 0.037 242);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.72 0.135 185 / 0.6);
+}
+
+/* Grid/candlestick pattern */
+.candlestick-bg {
+  background-image: repeating-linear-gradient(
+      90deg,
+      oklch(0.72 0.135 185 / 0.035) 0px,
+      oklch(0.72 0.135 185 / 0.035) 1px,
+      transparent 1px,
+      transparent 64px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      oklch(0.72 0.135 185 / 0.035) 0px,
+      oklch(0.72 0.135 185 / 0.035) 1px,
+      transparent 1px,
+      transparent 64px
+    );
+}
+
+/* Glow utilities */
+.teal-glow {
+  box-shadow: 0 0 24px oklch(0.72 0.135 185 / 0.18), 0 0 60px
+    oklch(0.72 0.135 185 / 0.08);
+}
+.teal-glow-border {
+  border-color: oklch(0.72 0.135 185 / 0.5);
+  box-shadow: 0 0 16px oklch(0.72 0.135 185 / 0.12), inset 0 0 16px
+    oklch(0.72 0.135 185 / 0.04);
+}
+.card-hover {
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+}
+.card-hover:hover {
+  border-color: oklch(0.72 0.135 185 / 0.4) !important;
+  box-shadow: 0 0 28px oklch(0.72 0.135 185 / 0.15), 0 8px 32px
+    oklch(0 0 0 / 0.4);
+  transform: translateY(-2px);
+}
+.gold-glow-btn {
+  background: linear-gradient(135deg, oklch(0.68 0.12 70), oklch(0.75 0.13 75));
+  color: oklch(0.065 0.009 258);
+  font-weight: 700;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.gold-glow-btn:hover {
+  box-shadow: 0 0 22px oklch(0.71 0.115 72 / 0.45);
+  transform: translateY(-1px);
+}
+.teal-outline-btn {
+  background: transparent;
+  border: 1.5px solid oklch(0.72 0.135 185 / 0.7);
+  color: oklch(0.72 0.135 185);
+  transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+.teal-outline-btn:hover {
+  background: oklch(0.72 0.135 185 / 0.1);
+  box-shadow: 0 0 18px oklch(0.72 0.135 185 / 0.25);
+  transform: translateY(-1px);
+}
