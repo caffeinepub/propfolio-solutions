@@ -103,7 +103,7 @@ export interface backendInterface {
     addAdminAccount(username: string, principalText: string): Promise<void>;
     approveOrder(orderId: bigint): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createOrder(productId: bigint, amount: number, cryptoCoin: string, paymentHash: string): Promise<bigint>;
+    createOrder(productId: bigint, amount: number, cryptoCoin: string, paymentHash: string, tradingAccountNumber: string): Promise<bigint>;
     createProduct(product: Product): Promise<bigint>;
     deleteDownloadableFile(id: bigint): Promise<void>;
     deleteProduct(productId: bigint): Promise<void>;
@@ -117,6 +117,7 @@ export interface backendInterface {
     getDownloadableFiles(): Promise<Array<[bigint, DownloadableFile]>>;
     getMyLicenses(): Promise<Array<[bigint, License]>>;
     getMyOrders(): Promise<Array<[bigint, Order]>>;
+    getOrderTradingAccounts(): Promise<Array<[bigint, string]>>;
     getPaymentGatewaySettings(): Promise<PaymentGatewaySettings>;
     getProduct(productId: bigint): Promise<Product | null>;
     getSiteSettings(): Promise<SiteSettings>;

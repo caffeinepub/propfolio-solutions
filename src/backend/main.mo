@@ -16,9 +16,9 @@ import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import Storage "blob-storage/Storage";
 import AccessControl "authorization/access-control";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   // Core user authentication and blob storage
   let accessControlState = AccessControl.initState();
@@ -127,8 +127,10 @@ actor {
 
   var nextOrderId = 1;
   let orderStore = Map.empty<Nat, Order>();
+  let orderTradingAccounts = Map.empty<Nat, Text>();
 
-  public shared ({ caller }) func createOrder(productId : Nat, amount : Float, cryptoCoin : Text, paymentHash : Text) : async Nat {
+  public shared ({ caller }) func createOrder(productId : Nat, amount : Float, cryptoCoin : Text, paymentHash : Text, tradingAccountNumber : Text) : async Nat {
+    // tradingAccountNumber stored separately below
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create orders");
     };
@@ -145,6 +147,7 @@ actor {
       licenseId = null;
     };
     orderStore.add(orderId, order);
+    orderTradingAccounts.add(orderId, tradingAccountNumber);
     orderId;
   };
 
@@ -198,6 +201,13 @@ actor {
       status = #Rejected;
     };
     orderStore.add(orderId, updatedOrder);
+  };
+
+  public query ({ caller }) func getOrderTradingAccounts() : async [(Nat, Text)] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view trading accounts");
+    };
+    orderTradingAccounts.entries().toArray();
   };
 
   // Licenses

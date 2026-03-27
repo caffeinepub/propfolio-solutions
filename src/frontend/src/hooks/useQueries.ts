@@ -47,6 +47,18 @@ export function useGetAllOrders() {
   });
 }
 
+export function useGetOrderTradingAccounts() {
+  const { actor, isFetching, isLoggedIn } = useActorReady();
+  return useQuery({
+    queryKey: ["orderTradingAccounts"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getOrderTradingAccounts();
+    },
+    enabled: !!actor && !isFetching && isLoggedIn,
+  });
+}
+
 export function useGetMyLicenses() {
   const { actor, isFetching, isLoggedIn } = useActorReady();
   return useQuery({
@@ -68,6 +80,7 @@ export function useCreateOrder() {
       amount: number;
       cryptoCoin: string;
       paymentHash: string;
+      tradingAccountNumber: string;
     }) => {
       if (!actor) throw new Error("Not connected");
       return actor.createOrder(
@@ -75,6 +88,7 @@ export function useCreateOrder() {
         params.amount,
         params.cryptoCoin,
         params.paymentHash,
+        params.tradingAccountNumber,
       );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["myOrders"] }),

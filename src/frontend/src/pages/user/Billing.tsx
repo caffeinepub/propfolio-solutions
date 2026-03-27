@@ -70,6 +70,7 @@ export default function Billing() {
         amount: prod.price,
         cryptoCoin: coin,
         paymentHash: hash.trim(),
+        tradingAccountNumber: "",
       });
       toast.success("Order submitted! Our team will verify your payment.");
       setNewOrderOpen(false);

@@ -41,6 +41,14 @@ const WALLET_ADDRESSES: Record<string, string> = {
   USDT: "TRX... (Admin USDT wallet — configure in Admin > Wallets)",
 };
 
+function getPlatformAccountLabel(platform: string): string {
+  const p = platform.toLowerCase();
+  if (p.includes("mt4")) return "MT4 Account Number";
+  if (p.includes("mt5")) return "MT5 Account Number";
+  if (p.includes("ctrader")) return "cTrader Account Number";
+  return "Trading Account Number";
+}
+
 export default function CheckoutModal({
   open,
   onClose,
@@ -50,6 +58,7 @@ export default function CheckoutModal({
 }: CheckoutModalProps) {
   const [selectedCoin, setSelectedCoin] = useState("USDT");
   const [paymentHash, setPaymentHash] = useState("");
+  const [tradingAccountNumber, setTradingAccountNumber] = useState("");
   const { data: products } = useGetAllProducts();
   const createOrder = useCreateOrder();
 
@@ -60,6 +69,8 @@ export default function CheckoutModal({
   const addonTotal = addonCount * plan.addonMonthlyPrice;
   const totalAmount =
     basePrice + (billingCycle === "monthly" ? addonTotal : addonTotal * 12);
+
+  const accountLabel = getPlatformAccountLabel(plan.platform);
 
   const getProductId = (): bigint => {
     if (!products || products.length === 0) return 1n;
@@ -77,7 +88,23 @@ export default function CheckoutModal({
     return typeof firstId === "bigint" ? firstId : 1n;
   };
 
+  const handleTradingAccountChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    // Allow only numeric characters
+    const val = e.target.value.replace(/[^0-9]/g, "");
+    setTradingAccountNumber(val);
+  };
+
   const handleSubmit = async () => {
+    if (!tradingAccountNumber.trim()) {
+      toast.error(`Please enter your ${accountLabel}`);
+      return;
+    }
+    if (!/^[0-9]+$/.test(tradingAccountNumber)) {
+      toast.error("Trading account number must be numeric");
+      return;
+    }
     if (!paymentHash.trim()) {
       toast.error("Please enter your payment transaction hash");
       return;
@@ -88,11 +115,13 @@ export default function CheckoutModal({
         amount: totalAmount,
         cryptoCoin: selectedCoin,
         paymentHash: paymentHash.trim(),
+        tradingAccountNumber: tradingAccountNumber.trim(),
       });
       toast.success(
         "Order submitted! Admin will review your payment within 24 hours.",
       );
       setPaymentHash("");
+      setTradingAccountNumber("");
       onClose();
     } catch {
       toast.error("Failed to submit order. Please try again.");
@@ -151,6 +180,25 @@ export default function CheckoutModal({
               ${totalAmount}/{billingCycle === "monthly" ? "mo" : "yr"}
             </span>
           </div>
+        </div>
+
+        {/* Trading Account Number */}
+        <div>
+          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+            {accountLabel}{" "}
+            <span style={{ color: "oklch(0.65 0.18 25)" }}>*</span>
+          </Label>
+          <Input
+            value={tradingAccountNumber}
+            onChange={handleTradingAccountChange}
+            placeholder={`Enter your ${accountLabel}...`}
+            inputMode="numeric"
+            className="bg-secondary border-border font-mono text-sm"
+            data-ocid="checkout.trading_account.input"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Your trading platform account number — used to bind the license.
+          </p>
         </div>
 
         {/* Crypto Selector */}

@@ -8,6 +8,7 @@ import {
   useApproveOrder,
   useGetAllOrders,
   useGetAllProducts,
+  useGetOrderTradingAccounts,
   useRejectOrder,
 } from "../../hooks/useQueries";
 
@@ -16,11 +17,15 @@ export default function AdminOrders() {
   const { data: products } = useGetAllProducts();
   const approveOrder = useApproveOrder();
   const rejectOrder = useRejectOrder();
+  const { data: tradingAccounts } = useGetOrderTradingAccounts();
   const [search, setSearch] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const productMap = new Map(
     products?.map(([id, p]) => [id.toString(), p.name]),
+  );
+  const tradingAccountMap = new Map(
+    (tradingAccounts ?? []).map(([id, acct]) => [id.toString(), acct]),
   );
 
   const filtered = (orders ?? []).filter(
@@ -104,6 +109,7 @@ export default function AdminOrders() {
                   {[
                     "Order",
                     "Product",
+                    "Trading Acct",
                     "Amount",
                     "Coin",
                     "Status",
@@ -134,6 +140,14 @@ export default function AdminOrders() {
                       <td className="px-4 py-3 text-foreground text-xs">
                         {productMap.get(order.productId.toString()) ??
                           `#${order.productId}`}
+                      </td>
+                      <td className="px-4 py-3">
+                        <code
+                          className="text-xs font-mono"
+                          style={{ color: "oklch(0.72 0.135 185)" }}
+                        >
+                          {tradingAccountMap.get(id.toString()) ?? "—"}
+                        </code>
                       </td>
                       <td className="px-4 py-3 font-semibold text-foreground">
                         ${order.amount}

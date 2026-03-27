@@ -196,7 +196,7 @@ export interface backendInterface {
     addAdminAccount(username: string, principalText: string): Promise<void>;
     approveOrder(orderId: bigint): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createOrder(productId: bigint, amount: number, cryptoCoin: string, paymentHash: string): Promise<bigint>;
+    createOrder(productId: bigint, amount: number, cryptoCoin: string, paymentHash: string, tradingAccountNumber: string): Promise<bigint>;
     createProduct(product: Product): Promise<bigint>;
     deleteDownloadableFile(id: bigint): Promise<void>;
     deleteProduct(productId: bigint): Promise<void>;
@@ -210,6 +210,7 @@ export interface backendInterface {
     getDownloadableFiles(): Promise<Array<[bigint, DownloadableFile]>>;
     getMyLicenses(): Promise<Array<[bigint, License]>>;
     getMyOrders(): Promise<Array<[bigint, Order]>>;
+    getOrderTradingAccounts(): Promise<Array<[bigint, string]>>;
     getPaymentGatewaySettings(): Promise<PaymentGatewaySettings>;
     getProduct(productId: bigint): Promise<Product | null>;
     getSiteSettings(): Promise<SiteSettings>;
@@ -376,17 +377,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async createOrder(arg0: bigint, arg1: number, arg2: string, arg3: string): Promise<bigint> {
+    async createOrder(arg0: bigint, arg1: number, arg2: string, arg3: string, arg4: string): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.createOrder(arg0, arg1, arg2, arg3);
+                const result = await this.actor.createOrder(arg0, arg1, arg2, arg3, arg4);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createOrder(arg0, arg1, arg2, arg3);
+            const result = await this.actor.createOrder(arg0, arg1, arg2, arg3, arg4);
             return result;
         }
     }
@@ -457,6 +458,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getAdminAccounts();
+            return result;
+        }
+    }
+    async getOrderTradingAccounts(): Promise<Array<[bigint, string]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getOrderTradingAccounts();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getOrderTradingAccounts();
             return result;
         }
     }

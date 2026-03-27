@@ -25,14 +25,17 @@ import {
   Key,
   Loader2,
   Plus,
+  QrCode,
   RefreshCw,
   Save,
   Settings,
   Shield,
   Trash2,
+  Upload,
   UserPlus,
+  X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type {
   License,
@@ -729,6 +732,9 @@ const COINS = [
   { id: "LTC", label: "Litecoin", color: "oklch(0.75 0.02 242)" },
 ];
 
+type CoinNetworks = Record<string, string>;
+type CoinQRs = Record<string, string>;
+
 function PaymentGatewayTab() {
   const { data: settings, isLoading } = useGetPaymentGatewaySettings();
   const save = useSavePaymentGatewaySettings();
@@ -741,9 +747,27 @@ function PaymentGatewayTab() {
     ltcAddress: "",
   });
 
+  const [coinNetworks, setCoinNetworks] = useState<CoinNetworks>({});
+  const [coinQRs, setCoinQRs] = useState<CoinQRs>({});
+
+  // Load persisted network labels and QR images on mount
+  useEffect(() => {
+    try {
+      const storedNetworks = localStorage.getItem("pf_coin_networks");
+      if (storedNetworks) setCoinNetworks(JSON.parse(storedNetworks));
+      const storedQRs = localStorage.getItem("pf_coin_qrs");
+      if (storedQRs) setCoinQRs(JSON.parse(storedQRs));
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
   useEffect(() => {
     if (settings) setForm(settings);
   }, [settings]);
+
+  // Refs for hidden file inputs, one per coin
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const toggleCoin = (coinId: string) => {
     setForm((f) => ({
@@ -758,9 +782,33 @@ function PaymentGatewayTab() {
     return `${coin.toLowerCase()}Address` as keyof PaymentGatewaySettings;
   };
 
+  const handleQRUpload = (coinId: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setCoinQRs((prev) => ({ ...prev, [coinId]: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveQR = (coinId: string) => {
+    setCoinQRs((prev) => {
+      const next = { ...prev };
+      delete next[coinId];
+      return next;
+    });
+    // Reset the file input
+    if (fileInputRefs.current[coinId]) {
+      fileInputRefs.current[coinId]!.value = "";
+    }
+  };
+
   const handleSave = async () => {
     try {
       await save.mutateAsync(form);
+      // Persist network labels and QR images to localStorage
+      localStorage.setItem("pf_coin_networks", JSON.stringify(coinNetworks));
+      localStorage.setItem("pf_coin_qrs", JSON.stringify(coinQRs));
       toast.success("Payment gateway settings saved!");
     } catch {
       toast.error("Failed to save payment gateway settings");
@@ -830,34 +878,149 @@ function PaymentGatewayTab() {
 
       {/* Wallet Addresses */}
       <div
-        className="rounded-xl border border-border p-5 space-y-4"
+        className="rounded-xl border border-border p-5 space-y-6"
         style={{ background: "oklch(0.115 0.022 245)" }}
       >
-        <h3 className="text-sm font-bold text-foreground mb-2">
-          Wallet Addresses
-        </h3>
+        <h3 className="text-sm font-bold text-foreground">Wallet Addresses</h3>
         {COINS.filter((c) => form.enabledCoins.includes(c.id)).map((coin) => (
-          <div key={coin.id}>
-            <Label
-              className="text-xs mb-1.5 block"
-              style={{ color: coin.color }}
-            >
-              {coin.id} Address
-            </Label>
-            <Input
-              value={(form[addressKey(coin.id)] as string) ?? ""}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  [addressKey(coin.id)]: e.target.value,
-                }))
-              }
-              placeholder={`Enter ${coin.id} wallet address`}
-              className="bg-secondary border-border font-mono text-xs"
-              data-ocid="admin.payment.input"
-            />
+          <div
+            key={coin.id}
+            className="rounded-lg border border-border/50 p-4 space-y-3"
+            style={{ background: "oklch(0.095 0.018 252)" }}
+          >
+            {/* Coin header */}
+            <div className="flex items-center gap-2 mb-1">
+              <span
+                className="text-xs font-extrabold px-2 py-0.5 rounded"
+                style={{
+                  background: `${coin.color.replace(")", " / 0.12)")}`,
+                  color: coin.color,
+                }}
+              >
+                {coin.id}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {coin.label}
+              </span>
+            </div>
+
+            {/* Wallet Address */}
+            <div>
+              <Label
+                className="text-xs mb-1.5 block"
+                style={{ color: coin.color }}
+              >
+                {coin.id} Address
+              </Label>
+              <Input
+                value={(form[addressKey(coin.id)] as string) ?? ""}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    [addressKey(coin.id)]: e.target.value,
+                  }))
+                }
+                placeholder={`Enter ${coin.id} wallet address`}
+                className="bg-secondary border-border font-mono text-xs"
+                data-ocid="admin.payment.input"
+              />
+            </div>
+
+            {/* Network */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 block">
+                Network
+              </Label>
+              <Input
+                value={coinNetworks[coin.id] ?? ""}
+                onChange={(e) =>
+                  setCoinNetworks((prev) => ({
+                    ...prev,
+                    [coin.id]: e.target.value,
+                  }))
+                }
+                placeholder={
+                  coin.id === "BTC"
+                    ? "e.g. Bitcoin Mainnet"
+                    : coin.id === "ETH"
+                      ? "e.g. ERC-20"
+                      : coin.id === "USDT"
+                        ? "e.g. TRC-20 / ERC-20 / BEP-20"
+                        : "e.g. Litecoin Mainnet"
+                }
+                className="bg-secondary border-border text-xs"
+                data-ocid="admin.payment.input"
+              />
+            </div>
+
+            {/* QR Code */}
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <QrCode className="w-3 h-3" />
+                QR Code Image
+              </Label>
+              <div className="flex items-center gap-3">
+                {/* Hidden file input */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={(el) => {
+                    fileInputRefs.current[coin.id] = el;
+                  }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleQRUpload(coin.id, file);
+                  }}
+                />
+
+                {/* Upload button */}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRefs.current[coin.id]?.click()}
+                  className="gap-1.5 text-xs border-border bg-secondary hover:bg-secondary/80 h-8"
+                  data-ocid="admin.payment.upload_button"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {coinQRs[coin.id] ? "Replace QR" : "Upload QR"}
+                </Button>
+
+                {/* QR preview thumbnail */}
+                {coinQRs[coin.id] && (
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="rounded-md overflow-hidden border border-border/60 flex-shrink-0"
+                      style={{ width: 80, height: 80 }}
+                    >
+                      <img
+                        src={coinQRs[coin.id]}
+                        alt={`${coin.id} QR code`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveQR(coin.id)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                      data-ocid="admin.payment.delete_button"
+                    >
+                      <X className="w-3 h-3" />
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         ))}
+
+        {form.enabledCoins.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Enable at least one coin above to configure wallet addresses.
+          </p>
+        )}
       </div>
 
       {/* Payment Instructions */}
