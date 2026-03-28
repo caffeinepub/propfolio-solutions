@@ -588,4 +588,26 @@ actor {
   public query func isAdminRegistered() : async Bool {
     accessControlState.adminAssigned;
   };
+
+  // Force grant admin - one-time bootstrap for credential migration
+  public shared ({ caller }) func forceGrantAdmin(secret : Text) : async Text {
+    if (secret != "propfolio-reset-2026") {
+      return "Invalid bootstrap token.";
+    };
+    if (caller.isAnonymous()) {
+      return "Cannot use anonymous principal.";
+    };
+    // Grant admin role regardless of adminAssigned flag
+    accessControlState.userRoles.add(caller, #admin);
+    accessControlState.adminAssigned := true;
+    // Store admin account
+    let adminAccount : AdminAccount = {
+      username = "Swara0219";
+      principalId = Principal.toText(caller);
+      createdAt = Time.now();
+    };
+    adminAccountStore.add(caller, adminAccount);
+    "Admin access granted successfully.";
+  };
+
 };

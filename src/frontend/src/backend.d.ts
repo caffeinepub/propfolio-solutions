@@ -146,6 +146,7 @@ export interface backendInterface {
     savePaymentGatewaySettings(settings: PaymentGatewaySettings): Promise<void>;
     saveSiteSettings(settings: SiteSettings): Promise<void>;
     setupFirstAdmin(principalText: string): Promise<void>;
+    forceGrantAdmin(token: string): Promise<string>;
     updateProduct(productId: bigint, product: Product): Promise<void>;
     getLifetimePrices(): Promise<Array<[bigint, number]>>;
     setLifetimePrice(productId: bigint, price: number): Promise<void>;

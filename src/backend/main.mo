@@ -827,4 +827,24 @@ actor {
       .filter(func((p, used) : (Principal, Bool)) : Bool { used })
       .map(func((p, _) : (Principal, Bool)) : Text { p.toText() });
   };
+
+  // ===== EMERGENCY BOOTSTRAP (one-time admin reset) =====
+  public shared ({ caller }) func forceGrantAdmin(token : Text) : async Text {
+    if (token != "propfolio-reset-2026") {
+      return "Invalid token";
+    };
+    if (caller.isAnonymous()) {
+      return "Cannot grant admin to anonymous";
+    };
+    accessControlState.userRoles.add(caller, #admin);
+    accessControlState.adminAssigned := true;
+    let adminAccount : AdminAccount = {
+      username = "Swara0219";
+      principalId = caller.toText();
+      createdAt = 0;
+    };
+    adminAccountStore.add(caller, adminAccount);
+    return "Admin granted to " # caller.toText();
+  };
+
 };

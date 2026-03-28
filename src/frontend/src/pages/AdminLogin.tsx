@@ -1,7 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Loader2, ShieldCheck, TrendingUp } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  ShieldCheck,
+  TrendingUp,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { createActorWithConfig } from "../config";
@@ -14,6 +20,12 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Bootstrap state
+  const [showBootstrap, setShowBootstrap] = useState(false);
+  const [bootstrapToken, setBootstrapToken] = useState("");
+  const [bootstrapLoading, setBootstrapLoading] = useState(false);
+  const [bootstrapMsg, setBootstrapMsg] = useState("");
 
   function getFriendlyError(err: any): string {
     const msg: string = err?.message ?? "";
@@ -35,20 +47,16 @@ export default function AdminLogin() {
     setIsLoading(true);
     try {
       const identity = await adminLogin(username, password);
-
-      // Create actor with the derived identity
       const actor = (await createActorWithConfig({
         agentOptions: { identity },
       })) as any;
 
-      // First-time setup: register this principal as admin if not yet registered
       const registered = await actor.isAdminRegistered();
       if (!registered) {
         const principalText = identity.getPrincipal().toString();
         await actor.setupFirstAdmin(principalText);
       }
 
-      // Verify admin access
       const isAdmin = await actor.isCallerAdmin();
       if (isAdmin) {
         navigate({ to: "/admin" });
@@ -59,6 +67,36 @@ export default function AdminLogin() {
       setError(getFriendlyError(err));
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleBootstrap(e: React.FormEvent) {
+    e.preventDefault();
+    if (!username.trim() || !password.trim()) {
+      setBootstrapMsg(
+        "Enter your username and password above first, then click Bootstrap.",
+      );
+      return;
+    }
+    setBootstrapLoading(true);
+    setBootstrapMsg("");
+    try {
+      const identity = await adminLogin(username, password);
+      const actor = (await createActorWithConfig({
+        agentOptions: { identity },
+      })) as any;
+      const result = await actor.forceGrantAdmin(bootstrapToken);
+      if (result.startsWith("Admin granted")) {
+        setBootstrapMsg(
+          "Success! Admin access granted. Click Login to Admin Panel now.",
+        );
+      } else {
+        setBootstrapMsg(result);
+      }
+    } catch (err: any) {
+      setBootstrapMsg(`Bootstrap failed: ${err?.message ?? "Unknown error"}`);
+    } finally {
+      setBootstrapLoading(false);
     }
   }
 
@@ -200,7 +238,65 @@ export default function AdminLogin() {
             </Button>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground mt-6">
+          {/* Bootstrap / First Time Setup */}
+          <div className="mt-6 border-t border-border/40 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowBootstrap((v) => !v)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mx-auto"
+            >
+              {showBootstrap ? (
+                <ChevronUp className="w-3 h-3" />
+              ) : (
+                <ChevronDown className="w-3 h-3" />
+              )}
+              First Time Setup / Account Recovery
+            </button>
+
+            {showBootstrap && (
+              <form onSubmit={handleBootstrap} className="mt-3 space-y-3">
+                <p className="text-xs text-muted-foreground text-center">
+                  Fill in your username &amp; password above, enter the
+                  bootstrap token below, then click Grant Access.
+                </p>
+                <Input
+                  type="password"
+                  placeholder="Bootstrap token"
+                  value={bootstrapToken}
+                  onChange={(e) => setBootstrapToken(e.target.value)}
+                  className="rounded-xl border-border/60 bg-background/50 text-sm"
+                />
+                {bootstrapMsg && (
+                  <p
+                    className={`text-xs text-center rounded-lg p-2 ${
+                      bootstrapMsg.startsWith("Success")
+                        ? "text-green-400 bg-green-950/40"
+                        : "text-destructive bg-destructive/10"
+                    }`}
+                  >
+                    {bootstrapMsg}
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  disabled={bootstrapLoading || !bootstrapToken.trim()}
+                  variant="outline"
+                  className="w-full rounded-xl text-xs"
+                >
+                  {bootstrapLoading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 animate-spin mr-1" />{" "}
+                      Granting...
+                    </>
+                  ) : (
+                    "Grant Admin Access"
+                  )}
+                </Button>
+              </form>
+            )}
+          </div>
+
+          <p className="text-center text-xs text-muted-foreground mt-4">
             <Link
               to="/login"
               style={{ color: "oklch(0.72 0.135 185)" }}
