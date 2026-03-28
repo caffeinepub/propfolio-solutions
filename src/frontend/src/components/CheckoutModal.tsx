@@ -8,7 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useCreateOrder, useGetAllProducts } from "../hooks/useQueries";
 
@@ -27,6 +27,11 @@ interface CheckoutModalProps {
   plan: Plan | null;
   addonCount: number;
   billingCycle: "monthly" | "annual";
+}
+
+interface AddonSlot {
+  slotId: number;
+  value: string;
 }
 
 const CRYPTO_OPTIONS = [
@@ -58,9 +63,24 @@ export default function CheckoutModal({
 }: CheckoutModalProps) {
   const [selectedCoin, setSelectedCoin] = useState("USDT");
   const [paymentHash, setPaymentHash] = useState("");
-  const [tradingAccountNumber, setTradingAccountNumber] = useState("");
+  const [primaryAccount, setPrimaryAccount] = useState("");
+  const [addonSlots, setAddonSlots] = useState<AddonSlot[]>([]);
   const { data: products } = useGetAllProducts();
   const createOrder = useCreateOrder();
+
+  useEffect(() => {
+    setAddonSlots((prev) => {
+      if (addonCount === prev.length) return prev;
+      if (addonCount > prev.length) {
+        const extras: AddonSlot[] = [];
+        for (let n = prev.length; n < addonCount; n++) {
+          extras.push({ slotId: n + 1, value: "" });
+        }
+        return [...prev, ...extras];
+      }
+      return prev.slice(0, addonCount);
+    });
+  }, [addonCount]);
 
   if (!plan) return null;
 
@@ -88,40 +108,58 @@ export default function CheckoutModal({
     return typeof firstId === "bigint" ? firstId : 1n;
   };
 
-  const handleTradingAccountChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    // Allow only numeric characters
-    const val = e.target.value.replace(/[^0-9]/g, "");
-    setTradingAccountNumber(val);
+  const handleAddonChange = (slotId: number, raw: string) => {
+    const val = raw.replace(/[^0-9]/g, "");
+    setAddonSlots((prev) =>
+      prev.map((s) => (s.slotId === slotId ? { ...s, value: val } : s)),
+    );
   };
 
   const handleSubmit = async () => {
-    if (!tradingAccountNumber.trim()) {
+    if (!primaryAccount.trim()) {
       toast.error(`Please enter your ${accountLabel}`);
       return;
     }
-    if (!/^[0-9]+$/.test(tradingAccountNumber)) {
-      toast.error("Trading account number must be numeric");
+    if (!/^[0-9]+$/.test(primaryAccount)) {
+      toast.error("Account numbers must be numeric");
       return;
+    }
+    for (const slot of addonSlots) {
+      if (!slot.value.trim()) {
+        toast.error(
+          `Please enter Additional License #${slot.slotId} Account Number`,
+        );
+        return;
+      }
+      if (!/^[0-9]+$/.test(slot.value)) {
+        toast.error(
+          `Additional License #${slot.slotId} Account Number must be numeric`,
+        );
+        return;
+      }
     }
     if (!paymentHash.trim()) {
       toast.error("Please enter your payment transaction hash");
       return;
     }
+    const allAccounts = [
+      primaryAccount,
+      ...addonSlots.map((s) => s.value),
+    ].join(",");
     try {
       await createOrder.mutateAsync({
         productId: getProductId(),
         amount: totalAmount,
         cryptoCoin: selectedCoin,
         paymentHash: paymentHash.trim(),
-        tradingAccountNumber: tradingAccountNumber.trim(),
+        tradingAccountNumber: allAccounts,
       });
       toast.success(
         "Order submitted! Admin will review your payment within 24 hours.",
       );
       setPaymentHash("");
-      setTradingAccountNumber("");
+      setPrimaryAccount("");
+      setAddonSlots((prev) => prev.map((s) => ({ ...s, value: "" })));
       onClose();
     } catch {
       toast.error("Failed to submit order. Please try again.");
@@ -182,22 +220,46 @@ export default function CheckoutModal({
           </div>
         </div>
 
-        {/* Trading Account Number */}
-        <div>
-          <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
-            {accountLabel}{" "}
-            <span style={{ color: "oklch(0.65 0.18 25)" }}>*</span>
-          </Label>
-          <Input
-            value={tradingAccountNumber}
-            onChange={handleTradingAccountChange}
-            placeholder={`Enter your ${accountLabel}...`}
-            inputMode="numeric"
-            className="bg-secondary border-border font-mono text-sm"
-            data-ocid="checkout.trading_account.input"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Your trading platform account number — used to bind the license.
+        {/* Trading Account Numbers */}
+        <div className="space-y-3">
+          {/* Primary account */}
+          <div>
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+              {accountLabel}{" "}
+              <span style={{ color: "oklch(0.65 0.18 25)" }}>*</span>
+            </Label>
+            <Input
+              value={primaryAccount}
+              onChange={(e) =>
+                setPrimaryAccount(e.target.value.replace(/[^0-9]/g, ""))
+              }
+              placeholder={`Enter your ${accountLabel}...`}
+              inputMode="numeric"
+              className="bg-secondary border-border font-mono text-sm"
+              data-ocid="checkout.trading_account.input"
+            />
+          </div>
+
+          {/* Additional license seat account fields */}
+          {addonSlots.map((slot) => (
+            <div key={slot.slotId}>
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+                Additional License #{slot.slotId} Account Number{" "}
+                <span style={{ color: "oklch(0.65 0.18 25)" }}>*</span>
+              </Label>
+              <Input
+                value={slot.value}
+                onChange={(e) => handleAddonChange(slot.slotId, e.target.value)}
+                placeholder={`Enter account number for license #${slot.slotId}...`}
+                inputMode="numeric"
+                className="bg-secondary border-border font-mono text-sm"
+                data-ocid={`checkout.additional_account.input.${slot.slotId}`}
+              />
+            </div>
+          ))}
+
+          <p className="text-xs text-muted-foreground">
+            Enter the trading account number for each license seat.
           </p>
         </div>
 

@@ -38,7 +38,7 @@ actor {
   // rate-limit buckets keyed by IP or license_key
   let rateBuckets  = Map.empty<Text, RateBucket>();
 
-  // admin token -- change with setAdminToken()
+  // admin token -- change with setAdminToken() or POST /admin/set-token
   stable var adminToken : Text = "propfolio-admin-2024";
 
   // ── Constants ───────────────────────────────────────────────────────────
@@ -89,25 +89,21 @@ actor {
   };
 
   // Minimal flat-JSON string value extractor.
-  // Handles {"key":"value"} -- sufficient for this use-case.
   func extractJsonField(json : Text, fieldName : Text) : Text {
     let needle = "\"" # fieldName # "\"";
-    // split on the key
     let parts = Text.split(json, #text needle);
     let _ = parts.next();
     switch (parts.next()) {
       case null "";
       case (?right) {
-        // right: ":"value",..."
         let colonParts = Text.split(right, #char ':');
         let _ = colonParts.next();
         switch (colonParts.next()) {
           case null "";
           case (?valSection) {
             let trimmed = Text.trim(valSection, #char ' ');
-            // grab between quotes
             let qparts = Text.split(trimmed, #char '"');
-            let _ = qparts.next(); // empty or whitespace before opening quote
+            let _ = qparts.next();
             switch (qparts.next()) {
               case null "";
               case (?v) v;
@@ -127,12 +123,10 @@ actor {
     clientIp      : Text,
   ) : VerifyResult {
 
-    // 1. Rate-limit by IP
     if (isRateLimited(clientIp)) {
       return { status = "error"; message = "Too many attempts. Try again in 15 minutes." };
     };
 
-    // 2. Look up license
     let rec = switch (licenseStore.get(licenseKey)) {
       case null {
         recordFailure(clientIp);
@@ -142,32 +136,26 @@ actor {
       case (?r) r;
     };
 
-    // 3. Check key-level rate limit too
     if (isRateLimited(licenseKey)) {
       return { status = "error"; message = "Too many attempts for this key. Try again in 15 minutes." };
     };
 
-    // 4. Check status
     if (rec.status != "active") {
       recordFailure(clientIp);
       return { status = "invalid"; message = "License is not active." };
     };
 
-    // 5. Check expiry (0 = perpetual)
     if (rec.expiryDate != 0 and Time.now() > rec.expiryDate) {
       recordFailure(clientIp);
       return { status = "invalid"; message = "License has expired." };
     };
 
-    // 6. Platform check ("ALL" passes any platform)
     if (rec.platform != "ALL" and rec.platform != platform) {
       recordFailure(clientIp);
       return { status = "invalid"; message = "License not valid for this platform." };
     };
 
-    // 7. Account-number locking
     if (rec.accountNumber == "") {
-      // First ping -- lock this key to the account
       licenseStore.set(licenseKey, { rec with accountNumber = accountNumber });
       return { status = "active"; message = "License activated and bound to account." };
     };
@@ -181,10 +169,8 @@ actor {
     { status = "active"; message = "License is valid." };
   };
 
-  // ── Admin endpoints ─────────────────────────────────────────────────────
+  // ── Admin Candid endpoints ──────────────────────────────────────────────
 
-  /// Push / update a license record from the admin panel.
-  /// expiryDateNs = 0 means perpetual.
   public shared func syncLicense(
     token        : Text,
     licenseKey   : Text,
@@ -201,17 +187,15 @@ actor {
       platform      = platform;
       status        = status;
       expiryDate    = expiryDateNs;
-      accountNumber = existingAccount; // preserve locked account
+      accountNumber = existingAccount;
     });
   };
 
-  /// Remove a license entirely.
   public shared func removeLicense(token : Text, licenseKey : Text) : async () {
     requireAdmin(token);
     licenseStore.delete(licenseKey);
   };
 
-  /// Clear the bound account number so a trader can re-bind to a new account.
   public shared func resetAccountLock(token : Text, licenseKey : Text) : async () {
     requireAdmin(token);
     switch (licenseStore.get(licenseKey)) {
@@ -222,7 +206,6 @@ actor {
     };
   };
 
-  /// Change the admin token.
   public shared func setAdminToken(oldToken : Text, newToken : Text) : async () {
     if (oldToken != adminToken) {
       Runtime.trap("Unauthorized: wrong existing token");
@@ -230,7 +213,6 @@ actor {
     adminToken := newToken;
   };
 
-  /// List all licenses (admin only).
   public shared func listLicenses(token : Text) : async [(Text, LicenseRecord)] {
     requireAdmin(token);
     licenseStore.entries().toArray();
@@ -238,14 +220,10 @@ actor {
 
   // ── HTTP interface ──────────────────────────────────────────────────────
 
-  // POST requests require state mutation (account locking), so we must
-  // upgrade them from the query http_request to http_request_update.
   public query func http_request(req : HttpRequest) : async HttpResponse {
     if (req.method == "POST") {
-      // Signal the IC gateway to retry as an update call
       return { status_code = 204; headers = []; body = ""; upgrade = ?true };
     };
-    // Health check: GET /
     {
       status_code = 200;
       headers     = [("Content-Type", "text/plain")];
@@ -260,6 +238,61 @@ actor {
       ("Access-Control-Allow-Origin", "*"),
     ];
 
+    // Decode body
+    let bodyText = switch (Text.fromBlob(req.body)) {
+      case null {
+        return {
+          status_code = 400;
+          headers     = jsonHeaders;
+          body        = "{\"status\":\"error\",\"message\":\"Body is not valid UTF-8.\"}";
+          upgrade     = null;
+        };
+      };
+      case (?t) t;
+    };
+
+    // ── Route: POST /admin/set-token ─────────────────────────────────
+    if (req.url == "/admin/set-token") {
+      let oldToken = extractJsonField(bodyText, "old_token");
+      let newToken = extractJsonField(bodyText, "new_token");
+
+      if (oldToken == "" or newToken == "") {
+        return {
+          status_code = 400;
+          headers     = jsonHeaders;
+          body        = "{\"status\":\"error\",\"message\":\"old_token and new_token are required.\"}";
+          upgrade     = null;
+        };
+      };
+
+      if (oldToken != adminToken) {
+        return {
+          status_code = 403;
+          headers     = jsonHeaders;
+          body        = "{\"status\":\"error\",\"message\":\"Current token is incorrect.\"}";
+          upgrade     = null;
+        };
+      };
+
+      if (Text.size(newToken) < 8) {
+        return {
+          status_code = 400;
+          headers     = jsonHeaders;
+          body        = "{\"status\":\"error\",\"message\":\"New token must be at least 8 characters.\"}";
+          upgrade     = null;
+        };
+      };
+
+      adminToken := newToken;
+      return {
+        status_code = 200;
+        headers     = jsonHeaders;
+        body        = "{\"status\":\"ok\",\"message\":\"Admin token updated successfully.\"}";
+        upgrade     = null;
+      };
+    };
+
+    // ── Route: POST /verify ──────────────────────────────────────────
     if (req.url != "/verify") {
       return {
         status_code = 404;
@@ -277,19 +310,6 @@ actor {
         };
       };
       "0.0.0.0";
-    };
-
-    // Decode body
-    let bodyText = switch (Text.fromBlob(req.body)) {
-      case null {
-        return {
-          status_code = 400;
-          headers     = jsonHeaders;
-          body        = "{\"status\":\"error\",\"message\":\"Body is not valid UTF-8.\"}";
-          upgrade     = null;
-        };
-      };
-      case (?t) t;
     };
 
     let licenseKey    = extractJsonField(bodyText, "license_key");

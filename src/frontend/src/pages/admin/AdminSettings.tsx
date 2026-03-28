@@ -1064,6 +1064,196 @@ function PaymentGatewayTab() {
   );
 }
 
+// ─── License Auth Service Tab ─────────────────────────────────────────────────
+function LicenseAuthTab() {
+  const [canisterId, setCanisterId] = useState(
+    () => localStorage.getItem("pf_license_auth_canister_id") ?? "",
+  );
+  const [oldToken, setOldToken] = useState("");
+  const [newToken, setNewToken] = useState("");
+  const [confirmToken, setConfirmToken] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    if (!canisterId.trim()) {
+      toast.error("Canister ID is required");
+      return;
+    }
+    if (!oldToken.trim() || !newToken.trim()) {
+      toast.error("Current and new tokens are required");
+      return;
+    }
+    if (newToken !== confirmToken) {
+      toast.error("New tokens do not match");
+      return;
+    }
+    if (newToken.length < 8) {
+      toast.error("New token must be at least 8 characters");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const url = `https://${canisterId.trim()}.raw.icp0.io/admin/set-token`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ old_token: oldToken, new_token: newToken }),
+      });
+      const data = await res.json();
+      if (res.ok && data.status === "ok") {
+        localStorage.setItem("pf_license_auth_canister_id", canisterId.trim());
+        toast.success("Admin token updated successfully!");
+        setOldToken("");
+        setNewToken("");
+        setConfirmToken("");
+      } else {
+        toast.error(data.message ?? "Failed to update token");
+      }
+    } catch {
+      toast.error("Network error — check the canister ID and try again");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6" data-ocid="admin.license_auth.panel">
+      <div
+        className="rounded-xl border border-border p-5 space-y-4"
+        style={{ background: "oklch(0.115 0.022 245)" }}
+      >
+        <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+          <Shield
+            className="w-4 h-4"
+            style={{ color: "oklch(0.71 0.115 72)" }}
+          />
+          License Auth Service — Admin Token
+        </h3>
+        <p className="text-xs text-muted-foreground">
+          Change the admin token used to authenticate sync calls to the{" "}
+          <code className="bg-secondary px-1 py-0.5 rounded text-xs">
+            license_auth_service
+          </code>{" "}
+          canister. Find your canister ID in the Caffeine deployment panel.
+        </p>
+
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1.5 block">
+            Canister ID
+          </Label>
+          <Input
+            value={canisterId}
+            onChange={(e) => setCanisterId(e.target.value)}
+            placeholder="e.g. aaaaa-aa..."
+            className="bg-secondary border-border font-mono text-xs"
+            data-ocid="admin.license_auth.input"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Saved locally in your browser.
+          </p>
+        </div>
+
+        {/* Verify URL Display */}
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1.5 block">
+            License Verify URL
+          </Label>
+          {canisterId.trim() ? (
+            <div className="flex items-center gap-2">
+              <code
+                className="flex-1 bg-secondary border border-border rounded px-3 py-2 text-xs font-mono text-cyan-400 break-all select-all"
+                style={{ userSelect: "all" }}
+              >
+                {`https://${canisterId.trim()}.raw.icp0.io/verify`}
+              </code>
+              <button
+                type="button"
+                className="shrink-0 px-3 py-2 text-xs rounded border border-border bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(
+                    `https://${canisterId.trim()}.raw.icp0.io/verify`,
+                  );
+                  toast.success("URL copied!");
+                }}
+              >
+                Copy
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              Enter your Canister ID above to generate the verify URL.
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Use this URL in your MetaTrader / cTrader WebRequest calls.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-4">
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">
+              Current Token
+            </Label>
+            <Input
+              type="password"
+              value={oldToken}
+              onChange={(e) => setOldToken(e.target.value)}
+              placeholder="Current admin token"
+              className="bg-secondary border-border"
+              data-ocid="admin.license_auth.input"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">
+              New Token
+            </Label>
+            <Input
+              type="password"
+              value={newToken}
+              onChange={(e) => setNewToken(e.target.value)}
+              placeholder="New token (min 8 chars)"
+              className="bg-secondary border-border"
+              data-ocid="admin.license_auth.input"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">
+              Confirm New Token
+            </Label>
+            <Input
+              type="password"
+              value={confirmToken}
+              onChange={(e) => setConfirmToken(e.target.value)}
+              placeholder="Repeat new token"
+              className="bg-secondary border-border"
+              data-ocid="admin.license_auth.input"
+            />
+          </div>
+        </div>
+
+        <Button
+          onClick={handleSave}
+          disabled={loading}
+          className="gap-2 font-semibold"
+          style={{
+            background: "oklch(0.71 0.115 72)",
+            color: "oklch(0.065 0.009 258)",
+          }}
+          data-ocid="admin.license_auth.submit_button"
+        >
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Key className="w-4 h-4" />
+          )}
+          Update Admin Token
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminSettings() {
   return (
@@ -1077,13 +1267,13 @@ export default function AdminSettings() {
           Settings
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Configure admin accounts, licenses, site preferences, and payment
-          gateway.
+          Configure admin accounts, licenses, site preferences, payment gateway,
+          and licensing service.
         </p>
       </div>
 
       <Tabs defaultValue="accounts">
-        <TabsList className="mb-6 bg-secondary border border-border">
+        <TabsList className="mb-6 bg-secondary border border-border flex-wrap h-auto">
           <TabsTrigger value="accounts" data-ocid="admin.settings.tab">
             Admin Accounts
           </TabsTrigger>
@@ -1095,6 +1285,9 @@ export default function AdminSettings() {
           </TabsTrigger>
           <TabsTrigger value="payment" data-ocid="admin.settings.tab">
             Payment Gateway
+          </TabsTrigger>
+          <TabsTrigger value="licenseauth" data-ocid="admin.settings.tab">
+            License Auth Service
           </TabsTrigger>
         </TabsList>
         <TabsContent value="accounts">
@@ -1108,6 +1301,9 @@ export default function AdminSettings() {
         </TabsContent>
         <TabsContent value="payment">
           <PaymentGatewayTab />
+        </TabsContent>
+        <TabsContent value="licenseauth">
+          <LicenseAuthTab />
         </TabsContent>
       </Tabs>
     </div>

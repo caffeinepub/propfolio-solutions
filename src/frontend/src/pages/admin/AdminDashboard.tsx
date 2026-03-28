@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import {
   FolderOpen,
+  ImageIcon,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -34,6 +35,7 @@ const NAV = [
   { label: "Affiliates", path: "/admin/affiliates", icon: Users },
   { label: "Support", path: "/admin/support", icon: MessageSquare },
   { label: "Files", path: "/admin/files", icon: FolderOpen },
+  { label: "Brand Assets", path: "/admin/brand-assets", icon: ImageIcon },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
@@ -130,7 +132,7 @@ export default function AdminDashboard() {
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                 }`}
-                data-ocid={`admin.sidebar.${item.label.toLowerCase()}.link`}
+                data-ocid={`admin.sidebar.${item.label.toLowerCase().replace(" ", "_")}.link`}
               >
                 <item.icon className="w-4 h-4" />
                 {item.label}

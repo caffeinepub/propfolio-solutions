@@ -22,6 +22,7 @@ import AdminPromotions from "./pages/admin/AdminPromotions";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminWallets from "./pages/admin/AdminWallets";
+import BrandAssets from "./pages/admin/BrandAssets";
 import Billing from "./pages/user/Billing";
 import Dashboard from "./pages/user/Dashboard";
 import Downloads from "./pages/user/Downloads";
@@ -153,6 +154,11 @@ const adminFilesRoute = createRoute({
   path: "/files",
   component: AdminFiles,
 });
+const adminBrandAssetsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/brand-assets",
+  component: BrandAssets,
+});
 
 const routeTree = rootRoute.addChildren([
   landingRoute,
@@ -178,6 +184,7 @@ const routeTree = rootRoute.addChildren([
     adminSupportRoute,
     adminSettingsRoute,
     adminFilesRoute,
+    adminBrandAssetsRoute,
   ]),
 ]);
 

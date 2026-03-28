@@ -2,4 +2,3 @@
 canisters:
   - src/frontend
   - src/backend
-  - src/license_auth_service
