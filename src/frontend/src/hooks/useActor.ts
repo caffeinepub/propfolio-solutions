@@ -3,25 +3,32 @@ import { useEffect } from "react";
 import type { backendInterface } from "../backend";
 import { createActorWithConfig } from "../config";
 import { getSecretParameter } from "../utils/urlParams";
+import { useAdminPasswordAuth } from "./useAdminPasswordAuth";
 import { useInternetIdentity } from "./useInternetIdentity";
 
 const ACTOR_QUERY_KEY = "actor";
 export function useActor() {
   const { identity } = useInternetIdentity();
+  const { adminIdentity, isAdminAuthenticated } = useAdminPasswordAuth();
   const queryClient = useQueryClient();
-  const actorQuery = useQuery<backendInterface>({
-    queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
-    queryFn: async () => {
-      const isAuthenticated = !!identity;
 
-      if (!isAuthenticated) {
+  // Prefer admin identity when admin is logged in
+  const effectiveIdentity =
+    isAdminAuthenticated && adminIdentity ? adminIdentity : identity;
+  const identityKey =
+    effectiveIdentity?.getPrincipal().toString() ?? "anonymous";
+
+  const actorQuery = useQuery<backendInterface>({
+    queryKey: [ACTOR_QUERY_KEY, identityKey],
+    queryFn: async () => {
+      if (!effectiveIdentity) {
         // Return anonymous actor if not authenticated
         return await createActorWithConfig();
       }
 
       const actorOptions = {
         agentOptions: {
-          identity,
+          identity: effectiveIdentity,
         },
       };
 
@@ -32,7 +39,6 @@ export function useActor() {
     },
     // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
-    // This will cause the actor to be recreated when the identity changes
     enabled: true,
   });
 
@@ -55,5 +61,6 @@ export function useActor() {
   return {
     actor: actorQuery.data || null,
     isFetching: actorQuery.isFetching,
+    isLoggedIn: !!effectiveIdentity,
   };
 }

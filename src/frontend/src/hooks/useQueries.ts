@@ -1,12 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Product, UserProfile } from "../backend";
 import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
 
 function useActorReady() {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
-  const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
+  const { actor, isFetching, isLoggedIn } = useActor();
   return { actor, isFetching, isLoggedIn };
 }
 

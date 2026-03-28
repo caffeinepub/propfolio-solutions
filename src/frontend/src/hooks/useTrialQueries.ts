@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
 
 export function useGetAllProductTrialSettings() {
   const { actor, isFetching } = useActor();
@@ -18,9 +17,7 @@ export function useGetAllProductTrialSettings() {
 }
 
 export function useHasCallerUsedTrial() {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
-  const isLoggedIn = !!identity && !identity.getPrincipal().isAnonymous();
+  const { actor, isFetching, isLoggedIn } = useActor();
   return useQuery({
     queryKey: ["hasUsedTrial"],
     queryFn: async () => {
