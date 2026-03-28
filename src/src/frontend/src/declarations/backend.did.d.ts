@@ -155,6 +155,7 @@ export interface _SERVICE {
   >,
   'saveSiteSettings' : ActorMethod<[SiteSettings], undefined>,
   'setupFirstAdmin' : ActorMethod<[string], undefined>,
+  'forceGrantAdmin' : ActorMethod<[string], string>,
   'updateProduct' : ActorMethod<[bigint, Product], undefined>,
   'validateLicense' : ActorMethod<
     [string, string],

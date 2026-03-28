@@ -227,6 +227,7 @@ export interface backendInterface {
     savePaymentGatewaySettings(settings: PaymentGatewaySettings): Promise<void>;
     saveSiteSettings(settings: SiteSettings): Promise<void>;
     setupFirstAdmin(principalText: string): Promise<void>;
+    forceGrantAdmin(secret: string): Promise<string>;
     updateProduct(productId: bigint, product: Product): Promise<void>;
     validateLicense(licenseKey: string, accountNumber: string): Promise<{
         status: LicenseStatus;
@@ -808,6 +809,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.setupFirstAdmin(arg0);
+            return result;
+        }
+    }
+    async forceGrantAdmin(arg0: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.forceGrantAdmin(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.forceGrantAdmin(arg0);
             return result;
         }
     }

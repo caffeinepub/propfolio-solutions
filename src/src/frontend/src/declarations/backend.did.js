@@ -203,6 +203,7 @@ export const idlService = IDL.Service({
   'savePaymentGatewaySettings' : IDL.Func([PaymentGatewaySettings], [], []),
   'saveSiteSettings' : IDL.Func([SiteSettings], [], []),
   'setupFirstAdmin' : IDL.Func([IDL.Text], [], []),
+  'forceGrantAdmin' : IDL.Func([IDL.Text], [IDL.Text], []),
   'updateProduct' : IDL.Func([IDL.Nat, Product], [], []),
   'validateLicense' : IDL.Func(
       [IDL.Text, IDL.Text],
@@ -421,6 +422,7 @@ export const idlFactory = ({ IDL }) => {
     'savePaymentGatewaySettings' : IDL.Func([PaymentGatewaySettings], [], []),
     'saveSiteSettings' : IDL.Func([SiteSettings], [], []),
     'setupFirstAdmin' : IDL.Func([IDL.Text], [], []),
+  'forceGrantAdmin' : IDL.Func([IDL.Text], [IDL.Text], []),
     'updateProduct' : IDL.Func([IDL.Nat, Product], [], []),
     'validateLicense' : IDL.Func(
         [IDL.Text, IDL.Text],
