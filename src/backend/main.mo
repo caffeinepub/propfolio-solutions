@@ -107,6 +107,32 @@ actor {
     productStore.remove(productId);
   };
 
+
+  // Lifetime Prices (separate store to avoid stable var compatibility issues)
+  let lifetimePriceStore = Map.empty<Nat, Float>();
+
+  public query func getLifetimePrices() : async [(Nat, Float)] {
+    lifetimePriceStore.entries().toArray();
+  };
+
+  public shared ({ caller }) func setLifetimePrice(productId : Nat, price : Float) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can set lifetime prices");
+    };
+    if (price <= 0) {
+      lifetimePriceStore.remove(productId);
+    } else {
+      lifetimePriceStore.add(productId, price);
+    };
+  };
+
+  public shared ({ caller }) func removeLifetimePrice(productId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can remove lifetime prices");
+    };
+    lifetimePriceStore.remove(productId);
+  };
+
   // Orders
   type OrderStatus = {
     #Pending;
@@ -587,5 +613,193 @@ actor {
 
   public query func isAdminRegistered() : async Bool {
     accessControlState.adminAssigned;
+  };
+
+  // ===== COUPONS =====
+  public type Coupon = {
+    code : Text;
+    discountPercent : Float;
+    maxTotalUses : Nat;    // 0 = unlimited
+    maxPerUser : Nat;      // 0 = unlimited
+    applicableProductIds : [Nat];  // empty = all products
+    applicablePlatforms : [Text];  // empty = all platforms
+    expiresAt : Int;       // 0 = no expiry
+    isActive : Bool;
+    createdAt : Int;
+  };
+
+  let couponStore = Map.empty<Text, Coupon>();
+  // track total uses: code -> count
+  let couponTotalUses = Map.empty<Text, Nat>();
+  // track per-user uses: compositeKey (code # "|" # principalText) -> count
+  let couponUserUses = Map.empty<Text, Nat>();
+
+  public query ({ caller }) func getAllCoupons() : async [(Text, Coupon)] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view coupons");
+    };
+    couponStore.entries().toArray();
+  };
+
+  public shared ({ caller }) func createCoupon(coupon : Coupon) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can create coupons");
+    };
+    if (coupon.code.size() == 0) {
+      Runtime.trap("Coupon code cannot be empty");
+    };
+    if (couponStore.containsKey(coupon.code)) {
+      Runtime.trap("Coupon code already exists");
+    };
+    couponStore.add(coupon.code, coupon);
+  };
+
+  public shared ({ caller }) func updateCoupon(code : Text, coupon : Coupon) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can update coupons");
+    };
+    if (not couponStore.containsKey(code)) {
+      Runtime.trap("Coupon not found");
+    };
+    couponStore.add(code, coupon);
+  };
+
+  public shared ({ caller }) func deleteCoupon(code : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete coupons");
+    };
+    couponStore.remove(code);
+    couponTotalUses.remove(code);
+  };
+
+  // Public: validate coupon — returns discount percent if valid, null if invalid
+  public query func validateCoupon(code : Text, productId : Nat, platform : Text) : async ?Float {
+    let coupon = switch (couponStore.get(code)) {
+      case (null) { return null };
+      case (?c) { c };
+    };
+    if (not coupon.isActive) { return null };
+    if (coupon.expiresAt > 0 and Time.now() > coupon.expiresAt) { return null };
+
+    // Check total uses
+    if (coupon.maxTotalUses > 0) {
+      let uses = switch (couponTotalUses.get(code)) {
+        case (null) { 0 };
+        case (?n) { n };
+      };
+      if (uses >= coupon.maxTotalUses) { return null };
+    };
+
+    // Check product restriction
+    if (coupon.applicableProductIds.size() > 0) {
+      let found = coupon.applicableProductIds.find(func(id : Nat) : Bool { id == productId });
+      if (found == null) { return null };
+    };
+
+    // Check platform restriction
+    if (coupon.applicablePlatforms.size() > 0) {
+      let lowerPlatform = platform;
+      let found = coupon.applicablePlatforms.find(func(p : Text) : Bool { p == lowerPlatform });
+      if (found == null) { return null };
+    };
+
+    ?coupon.discountPercent;
+  };
+
+  // User: record coupon redemption when order is placed
+  public shared ({ caller }) func redeemCoupon(code : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can redeem coupons");
+    };
+    let coupon = switch (couponStore.get(code)) {
+      case (null) { Runtime.trap("Coupon not found") };
+      case (?c) { c };
+    };
+
+    // Check per-user limit
+    if (coupon.maxPerUser > 0) {
+      let userKey = code # "|" # caller.toText();
+      let userUses = switch (couponUserUses.get(userKey)) {
+        case (null) { 0 };
+        case (?n) { n };
+      };
+      if (userUses >= coupon.maxPerUser) {
+        Runtime.trap("You have reached the usage limit for this coupon");
+      };
+      couponUserUses.add(userKey, userUses + 1);
+    };
+
+    // Increment total uses
+    let currentUses = switch (couponTotalUses.get(code)) {
+      case (null) { 0 };
+      case (?n) { n };
+    };
+    couponTotalUses.add(code, currentUses + 1);
+  };
+
+  // Admin: get coupon stats
+  public query ({ caller }) func getCouponStats(code : Text) : async { totalUses : Nat } {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view coupon stats");
+    };
+    let uses = switch (couponTotalUses.get(code)) {
+      case (null) { 0 };
+      case (?n) { n };
+    };
+    { totalUses = uses };
+  };
+
+  // ===== FREE TRIAL ABUSE PREVENTION =====
+  type TrialSettings = {
+    trialEnabled : Bool;
+    trialDurationDays : Nat;
+  };
+
+  let productTrialSettings = Map.empty<Nat, TrialSettings>();
+  let trialUsedStore = Map.empty<Principal, Bool>();
+
+  public shared ({ caller }) func setProductTrialSettings(productId : Nat, trialEnabled : Bool, trialDurationDays : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can set trial settings");
+    };
+    productTrialSettings.add(productId, { trialEnabled; trialDurationDays });
+  };
+
+  public query func getAllProductTrialSettings() : async [(Nat, TrialSettings)] {
+    productTrialSettings.entries().toArray();
+  };
+
+  public query ({ caller }) func hasCallerUsedTrial() : async Bool {
+    switch (trialUsedStore.get(caller)) {
+      case (?true) { true };
+      case (_) { false };
+    };
+  };
+
+  public shared ({ caller }) func markTrialUsed() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can claim trials");
+    };
+    if (switch (trialUsedStore.get(caller)) { case (?true) { true }; case (_) { false } }) {
+      Runtime.trap("You have already used your free trial");
+    };
+    trialUsedStore.add(caller, true);
+  };
+
+  public shared ({ caller }) func resetUserTrial(principalText : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can reset user trials");
+    };
+    let targetPrincipal = Principal.fromText(principalText);
+    trialUsedStore.remove(targetPrincipal);
+  };
+
+  public query ({ caller }) func getUsersWhoUsedTrial() : async [Text] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can view trial users");
+    };
+    trialUsedStore.entries().toArray()
+      .filter(func((p, used) : (Principal, Bool)) : Bool { used })
+      .map(func((p, _) : (Principal, Bool)) : Text { p.toText() });
   };
 };

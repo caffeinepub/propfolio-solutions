@@ -52,6 +52,13 @@ export default function Navbar() {
           className="hidden md:flex items-center gap-7"
           aria-label="Main navigation"
         >
+          <Link
+            to="/products"
+            className="text-sm text-muted-foreground hover:text-primary transition-colors font-medium"
+            data-ocid="nav.products.link"
+          >
+            Products
+          </Link>
           {[
             { label: "Features", href: "/#features" },
             { label: "Pricing", href: "/#pricing" },
@@ -153,6 +160,14 @@ export default function Navbar() {
             className="md:hidden border-t border-border/50 px-6 py-4 space-y-3"
             style={{ background: "oklch(0.09 0.012 252)" }}
           >
+            <Link
+              to="/products"
+              className="block text-sm text-muted-foreground hover:text-primary py-1 font-medium"
+              data-ocid="nav.products.link"
+              onClick={() => setMobileOpen(false)}
+            >
+              Products
+            </Link>
             {[
               { label: "Features", href: "/#features" },
               { label: "Pricing", href: "/#pricing" },

@@ -11,8 +11,11 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminSetup from "./pages/AdminSetup";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import ProductsPage from "./pages/ProductsPage";
 import Register from "./pages/Register";
 import AdminAffiliates from "./pages/admin/AdminAffiliates";
+import AdminCombos from "./pages/admin/AdminCombos";
+import AdminCoupons from "./pages/admin/AdminCoupons";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminFiles from "./pages/admin/AdminFiles";
 import AdminOrders from "./pages/admin/AdminOrders";
@@ -44,6 +47,11 @@ const landingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: Landing,
+});
+const productsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/products",
+  component: ProductsPage,
 });
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -129,6 +137,16 @@ const adminPromotionsRoute = createRoute({
   path: "/promotions",
   component: AdminPromotions,
 });
+const adminCouponsRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/coupons",
+  component: AdminCoupons,
+});
+const adminCombosRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "/combos",
+  component: AdminCombos,
+});
 const adminWalletsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/wallets",
@@ -162,6 +180,7 @@ const adminBrandAssetsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   landingRoute,
+  productsRoute,
   loginRoute,
   registerRoute,
   adminSetupRoute,
@@ -179,6 +198,8 @@ const routeTree = rootRoute.addChildren([
     adminOrdersRoute,
     adminProductsRoute,
     adminPromotionsRoute,
+    adminCouponsRoute,
+    adminCombosRoute,
     adminWalletsRoute,
     adminAffiliatesRoute,
     adminSupportRoute,

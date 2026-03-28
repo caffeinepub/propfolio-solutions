@@ -33,6 +33,7 @@ import {
   Trash2,
   Upload,
   UserPlus,
+  Users,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -58,6 +59,10 @@ import {
   useSaveSiteSettings,
 } from "../../hooks/useAdminSettingsQueries";
 import { useGetAllProducts } from "../../hooks/useQueries";
+import {
+  useGetUsersWhoUsedTrial,
+  useResetUserTrial,
+} from "../../hooks/useTrialQueries";
 
 function truncate(str: string, n = 12) {
   if (!str) return "";
@@ -1254,6 +1259,128 @@ function LicenseAuthTab() {
   );
 }
 
+// ─── Trial Users Tab ─────────────────────────────────────────────────────────
+function TrialUsersTab() {
+  const { data: trialUsers, isLoading, refetch } = useGetUsersWhoUsedTrial();
+  const resetTrial = useResetUserTrial();
+
+  const handleReset = async (principalId: string) => {
+    try {
+      await resetTrial.mutateAsync(principalId);
+      toast.success("Trial reset successfully");
+      refetch();
+    } catch {
+      toast.error("Failed to reset trial");
+    }
+  };
+
+  const truncatePrincipal = (p: string) =>
+    p.length > 20 ? `${p.slice(0, 10)}...${p.slice(-8)}` : p;
+
+  return (
+    <div className="space-y-4" data-ocid="admin.trial_users.panel">
+      <div
+        className="rounded-xl border border-border p-5 space-y-4"
+        style={{ background: "oklch(0.115 0.022 245)" }}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Users
+              className="w-4 h-4"
+              style={{ color: "oklch(0.72 0.135 185)" }}
+            />
+            Users Who Used Free Trial
+          </h3>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            data-ocid="admin.trial_users.button"
+          >
+            <RefreshCw className="w-3 h-3" /> Refresh
+          </button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Each user can only use one free trial. Use Reset to allow a user to
+          claim another trial.
+        </p>
+
+        {isLoading ? (
+          <div
+            className="flex items-center justify-center py-8"
+            data-ocid="admin.trial_users.loading_state"
+          >
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          </div>
+        ) : !trialUsers || trialUsers.length === 0 ? (
+          <div
+            className="rounded-lg border border-border p-6 text-center"
+            style={{ background: "oklch(0.09 0.012 252)" }}
+            data-ocid="admin.trial_users.empty_state"
+          >
+            <p className="text-sm text-muted-foreground">No trial users yet.</p>
+          </div>
+        ) : (
+          <div
+            className="rounded-lg border border-border overflow-hidden"
+            data-ocid="admin.trial_users.table"
+          >
+            <Table>
+              <TableHeader>
+                <TableRow
+                  style={{ borderColor: "oklch(0.22 0.037 242 / 0.4)" }}
+                >
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Principal ID
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right">
+                    Action
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {trialUsers.map((principalId, i) => (
+                  <TableRow
+                    key={principalId}
+                    style={{ borderColor: "oklch(0.22 0.037 242 / 0.3)" }}
+                  >
+                    <TableCell>
+                      <span
+                        className="font-mono text-xs"
+                        style={{ color: "oklch(0.72 0.135 185)" }}
+                        title={principalId}
+                      >
+                        {truncatePrincipal(principalId)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={resetTrial.isPending}
+                        onClick={() => handleReset(principalId)}
+                        className="text-xs h-7 gap-1"
+                        data-ocid={`admin.trial_users.button.${i + 1}`}
+                      >
+                        {resetTrial.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3 h-3" />
+                        )}
+                        Reset Trial
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AdminSettings() {
   return (
@@ -1289,6 +1416,9 @@ export default function AdminSettings() {
           <TabsTrigger value="licenseauth" data-ocid="admin.settings.tab">
             License Auth Service
           </TabsTrigger>
+          <TabsTrigger value="trialusers" data-ocid="admin.settings.tab">
+            Trial Users
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="accounts">
           <AdminAccountsTab />
@@ -1304,6 +1434,9 @@ export default function AdminSettings() {
         </TabsContent>
         <TabsContent value="licenseauth">
           <LicenseAuthTab />
+        </TabsContent>
+        <TabsContent value="trialusers">
+          <TrialUsersTab />
         </TabsContent>
       </Tabs>
     </div>

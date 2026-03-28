@@ -1,28 +1,35 @@
 # PropFolio Solutions
 
 ## Current State
-Main backend canister (591 lines) handles all user/license/order/admin logic. A standalone `license_auth_service` micro-canister has been added to handle HTTP-based license verification independently, bypassing main canister memory/timeout constraints.
+Phases 1–4 are complete. The backend has products, orders, licenses, coupons, combos, and lifetime pricing. The Products page wires to the backend. No trial-related logic exists anywhere.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `src/license_auth_service/main.mo` -- standalone Motoko micro-canister
-  - Own lightweight `licenseStore: Map<Text, LicenseRecord>`
-  - `http_request` (query) upgrades POST to update
-  - `http_request_update` handles POST /verify: parses JSON body, applies rate limiting, platform check, account-number locking, returns `{status, message}`
-  - Admin endpoints: `syncLicense`, `removeLicense`, `resetAccountLock`, `setAdminToken`, `listLicenses` -- all protected by `adminToken`
-  - Rate limiting: 5 failures per 15min window per IP and per license key
-- `src/license_auth_service/canister.yaml` -- build config for the new canister
-- Updated `icp.yaml` -- adds `src/license_auth_service` to canister list
+- Backend: `productTrialSettings` store (Map<Nat, {trialEnabled, trialDurationDays}>) — separate from Product type to avoid stable var issues
+- Backend: `trialUsedStore` (Map<Principal, Bool>) — tracks one trial per Principal ID
+- Backend functions:
+  - `setProductTrialSettings(productId, trialEnabled, trialDurationDays)` — admin only
+  - `getAllProductTrialSettings()` — public, returns all trial configs
+  - `hasCallerUsedTrial()` — query, returns bool for caller
+  - `markTrialUsed()` — shared, records trial claim for caller
+  - `resetUserTrial(principalText)` — admin only, clears trial flag
+  - `getUsersWhoUsedTrial()` — admin only, returns list of Principal texts
+- Frontend: Admin > Products — add "Enable Trial" toggle and "Trial Duration (days)" field per product
+- Frontend: Admin > Users (or Users section in Settings) — show trial flag per user, with Reset Trial button
+- Frontend: Products Page — show "Free Trial" badge/button on trial-enabled products; if user already used trial, show "You have already used your free trial" and disable trial option
+- Frontend: Checkout modal — if order amount is $0 (trial), call `markTrialUsed()` before/after `createOrder`; check `hasCallerUsedTrial()` on load and block trial flow if already used
 
 ### Modify
-- `icp.yaml` -- added `- src/license_auth_service`
+- `backend.d.ts` — add new trial function signatures
 
 ### Remove
-- Nothing removed
+- Nothing
 
 ## Implementation Plan
-1. Write `src/license_auth_service/main.mo` with all logic above
-2. Write `src/license_auth_service/canister.yaml` mirroring backend build config
-3. Update `icp.yaml` to include the new canister
-4. Deploy -- no changes to `main.mo` or frontend
+1. Add trial stores and functions to `src/backend/main.mo` (isolated additions, no changes to existing types)
+2. Update `src/frontend/src/backend.d.ts` with new trial function types
+3. Update Admin > Products (`AdminProducts.tsx`) to include trial toggle + duration field
+4. Update Products Page (`ProductsPage.tsx`) to show trial option and enforce one-trial-per-user
+5. Update Checkout modal (`CheckoutModal.tsx`) to call `markTrialUsed()` on $0 trial orders
+6. Add trial usage visibility in admin (Admin > Users section or Settings)

@@ -36,8 +36,14 @@ import {
   useCreateProduct,
   useDeleteProduct,
   useGetAllProducts,
+  useGetLifetimePrices,
+  useSetLifetimePrice,
   useUpdateProduct,
 } from "../../hooks/useQueries";
+import {
+  useGetAllProductTrialSettings,
+  useSetProductTrialSettings,
+} from "../../hooks/useTrialQueries";
 
 const PLATFORMS = ["MT4", "MT5", "cTrader"];
 const TIERS = ["PropLite", "PropTrader", "PropPro", "PropEnterprise"];
@@ -57,21 +63,38 @@ export default function AdminProducts() {
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
+  const { data: lifetimePrices } = useGetLifetimePrices();
+  const setLifetimePrice = useSetLifetimePrice();
+  const { data: trialSettings } = useGetAllProductTrialSettings();
+  const setProductTrialSettings = useSetProductTrialSettings();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<bigint | null>(null);
   const [form, setForm] = useState<Partial<Product>>(emptyProduct());
   const [featureInput, setFeatureInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [lifetimePriceInput, setLifetimePriceInput] = useState<string>("");
+  const [trialEnabled, setTrialEnabled] = useState(false);
+  const [trialDurationDays, setTrialDurationDays] = useState<string>("7");
 
   const openCreate = () => {
     setEditId(null);
     setForm(emptyProduct());
+    setLifetimePriceInput("");
+    setTrialEnabled(false);
+    setTrialDurationDays("7");
     setFormOpen(true);
   };
   const openEdit = (id: bigint, p: Product) => {
     setEditId(id);
     setForm({ ...p });
+    const existingLt = lifetimePrices?.find(([lid]) => lid === id);
+    setLifetimePriceInput(existingLt ? String(existingLt[1]) : "");
+    const existingTrial = trialSettings?.find(([tid]) => tid === id);
+    setTrialEnabled(existingTrial ? existingTrial[1].trialEnabled : false);
+    setTrialDurationDays(
+      existingTrial ? String(existingTrial[1].trialDurationDays) : "7",
+    );
     setFormOpen(true);
   };
 
@@ -112,9 +135,39 @@ export default function AdminProducts() {
     try {
       if (editId !== null) {
         await updateProduct.mutateAsync({ id: editId, product });
+        // Save lifetime price separately
+        const ltPrice = lifetimePriceInput
+          ? Number.parseFloat(lifetimePriceInput)
+          : 0;
+        await setLifetimePrice.mutateAsync({
+          productId: editId,
+          price: ltPrice,
+        });
+        await setProductTrialSettings.mutateAsync({
+          productId: editId,
+          trialEnabled,
+          trialDurationDays: BigInt(Number(trialDurationDays) || 7),
+        });
         toast.success("Product updated!");
       } else {
-        await createProduct.mutateAsync(product);
+        const newId = await createProduct.mutateAsync(product);
+        // Save lifetime price for new product
+        const ltPrice = lifetimePriceInput
+          ? Number.parseFloat(lifetimePriceInput)
+          : 0;
+        if (ltPrice > 0) {
+          await setLifetimePrice.mutateAsync({
+            productId: newId,
+            price: ltPrice,
+          });
+        }
+        if (trialEnabled) {
+          await setProductTrialSettings.mutateAsync({
+            productId: newId,
+            trialEnabled,
+            trialDurationDays: BigInt(Number(trialDurationDays) || 7),
+          });
+        }
         toast.success("Product created!");
       }
       setFormOpen(false);
@@ -401,6 +454,61 @@ export default function AdminProducts() {
                 className="bg-secondary border-border"
                 data-ocid="admin.products.input"
               />
+            </div>
+            <div>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                Lifetime Price (USD, one-time) — leave blank to hide
+              </Label>
+              <Input
+                type="number"
+                value={lifetimePriceInput}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    lifetimePrice: e.target.value
+                      ? Number.parseFloat(e.target.value)
+                      : undefined,
+                  }))
+                }
+                placeholder="e.g. 299 (optional)"
+                className="bg-secondary border-border"
+                data-ocid="admin.products.lifetime_price.input"
+              />
+            </div>
+            <div
+              className="rounded-xl border border-border p-4 space-y-3"
+              style={{ background: "oklch(0.09 0.012 252)" }}
+            >
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Free Trial Settings
+              </Label>
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={trialEnabled}
+                  onCheckedChange={setTrialEnabled}
+                  data-ocid="admin.products.trial.switch"
+                />
+                <span className="text-sm text-foreground">
+                  Enable Free Trial
+                </span>
+              </div>
+              {trialEnabled && (
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-1 block">
+                    Trial Duration (days)
+                  </Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={trialDurationDays}
+                    onChange={(e) => setTrialDurationDays(e.target.value)}
+                    placeholder="e.g. 7"
+                    className="bg-secondary border-border w-32"
+                    data-ocid="admin.products.trial_duration.input"
+                  />
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">

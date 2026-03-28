@@ -11,6 +11,7 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminSetup from "./pages/AdminSetup";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import ProductsPage from "./pages/ProductsPage";
 import Register from "./pages/Register";
 import AdminAffiliates from "./pages/admin/AdminAffiliates";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -63,6 +64,11 @@ const adminLoginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin-login",
   component: AdminLogin,
+});
+const productsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/products",
+  component: ProductsPage,
 });
 
 // User Dashboard Layout
@@ -160,6 +166,7 @@ const routeTree = rootRoute.addChildren([
   registerRoute,
   adminSetupRoute,
   adminLoginRoute,
+  productsRoute,
   dashboardRoute.addChildren([
     dashboardIndexRoute,
     downloadsRoute,

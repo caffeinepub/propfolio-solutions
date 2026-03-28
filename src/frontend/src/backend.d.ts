@@ -84,6 +84,17 @@ export interface UserProfile {
     createdAt: bigint;
     email: string;
 }
+export interface Coupon {
+    code: string;
+    discountPercent: number;
+    maxTotalUses: bigint;
+    maxPerUser: bigint;
+    applicableProductIds: Array<bigint>;
+    applicablePlatforms: Array<string>;
+    expiresAt: bigint;
+    isActive: boolean;
+    createdAt: bigint;
+}
 export enum LicenseStatus {
     Active = "Active",
     Revoked = "Revoked",
@@ -135,9 +146,27 @@ export interface backendInterface {
     saveSiteSettings(settings: SiteSettings): Promise<void>;
     setupFirstAdmin(principalText: string): Promise<void>;
     updateProduct(productId: bigint, product: Product): Promise<void>;
+    getLifetimePrices(): Promise<Array<[bigint, number]>>;
+    setLifetimePrice(productId: bigint, price: number): Promise<void>;
+    removeLifetimePrice(productId: bigint): Promise<void>;
     validateLicense(licenseKey: string, accountNumber: string): Promise<{
         status: LicenseStatus;
         expiryDate: bigint;
         platform: string;
     } | null>;
+    // Coupon functions
+    getAllCoupons(): Promise<Array<[string, Coupon]>>;
+    createCoupon(coupon: Coupon): Promise<void>;
+    updateCoupon(code: string, coupon: Coupon): Promise<void>;
+    deleteCoupon(code: string): Promise<void>;
+    validateCoupon(code: string, productId: bigint, platform: string): Promise<number | null>;
+    redeemCoupon(code: string): Promise<void>;
+    getCouponStats(code: string): Promise<{ totalUses: bigint }>;
+    // Trial functions
+    setProductTrialSettings(productId: bigint, trialEnabled: boolean, trialDurationDays: bigint): Promise<void>;
+    getAllProductTrialSettings(): Promise<Array<[bigint, { trialEnabled: boolean; trialDurationDays: bigint }]>>;
+    hasCallerUsedTrial(): Promise<boolean>;
+    markTrialUsed(): Promise<void>;
+    resetUserTrial(principalText: string): Promise<void>;
+    getUsersWhoUsedTrial(): Promise<Array<string>>;
 }

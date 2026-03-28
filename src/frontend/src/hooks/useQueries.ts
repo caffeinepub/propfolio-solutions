@@ -169,3 +169,33 @@ export function useSaveProfile() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["userProfile"] }),
   });
 }
+
+export function useGetLifetimePrices() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["lifetimePrices"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getLifetimePrices();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useSetLifetimePrice() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      productId,
+      price,
+    }: { productId: bigint; price: number }) => {
+      if (!actor) throw new Error("No actor");
+      return actor.setLifetimePrice(productId, price);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["lifetimePrices"] });
+    },
+  });
+}

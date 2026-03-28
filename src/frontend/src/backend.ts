@@ -205,6 +205,9 @@ export interface backendInterface {
     getAllLicenses(): Promise<Array<[bigint, License]>>;
     getAllOrders(): Promise<Array<[bigint, Order]>>;
     getAllProducts(): Promise<Array<[bigint, Product]>>;
+    getLifetimePrices(): Promise<Array<[bigint, number]>>;
+    setLifetimePrice(productId: bigint, price: number): Promise<void>;
+    removeLifetimePrice(productId: bigint): Promise<void>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getDownloadableFiles(): Promise<Array<[bigint, DownloadableFile]>>;
@@ -430,6 +433,48 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteProduct(arg0);
+            return result;
+        }
+    }
+    async getLifetimePrices(): Promise<Array<[bigint, number]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getLifetimePrices();
+                return result.map(([id, price]: [bigint, number]) => [id, Number(price)] as [bigint, number]);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getLifetimePrices();
+            return result.map(([id, price]: [bigint, number]) => [id, Number(price)] as [bigint, number]);
+        }
+    }
+    async setLifetimePrice(arg0: bigint, arg1: number): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setLifetimePrice(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setLifetimePrice(arg0, arg1);
+            return result;
+        }
+    }
+    async removeLifetimePrice(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.removeLifetimePrice(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.removeLifetimePrice(arg0);
             return result;
         }
     }
@@ -972,6 +1017,7 @@ async function from_candid_record_n28(_uploadFile: (file: ExternalBlob) => Promi
     isActive: boolean;
     price: number;
     fileUrl: [] | [_ExternalBlob];
+    lifetimePrice: [] | [number];
 }): Promise<{
     features: Array<string>;
     name: string;
@@ -990,7 +1036,8 @@ async function from_candid_record_n28(_uploadFile: (file: ExternalBlob) => Promi
         platform: value.platform,
         isActive: value.isActive,
         price: value.price,
-        fileUrl: record_opt_to_undefined(await from_candid_opt_n29(_uploadFile, _downloadFile, value.fileUrl))
+        fileUrl: record_opt_to_undefined(await from_candid_opt_n29(_uploadFile, _downloadFile, value.fileUrl)),
+        lifetimePrice: value.lifetimePrice && value.lifetimePrice.length > 0 ? value.lifetimePrice[0] : undefined
     };
 }
 async function from_candid_record_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1146,6 +1193,7 @@ async function to_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise
     isActive: boolean;
     price: number;
     fileUrl: [] | [_ExternalBlob];
+    lifetimePrice: [] | [number];
 }> {
     return {
         features: value.features,
@@ -1155,7 +1203,8 @@ async function to_candid_record_n11(_uploadFile: (file: ExternalBlob) => Promise
         platform: value.platform,
         isActive: value.isActive,
         price: value.price,
-        fileUrl: value.fileUrl ? candid_some(await to_candid_ExternalBlob_n12(_uploadFile, _downloadFile, value.fileUrl)) : candid_none()
+        fileUrl: value.fileUrl ? candid_some(await to_candid_ExternalBlob_n12(_uploadFile, _downloadFile, value.fileUrl)) : candid_none(),
+        lifetimePrice: value.lifetimePrice !== undefined && value.lifetimePrice > 0 ? candid_some(value.lifetimePrice) : candid_none()
     };
 }
 function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

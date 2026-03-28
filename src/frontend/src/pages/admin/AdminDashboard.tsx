@@ -7,6 +7,7 @@ import {
 import {
   FolderOpen,
   ImageIcon,
+  LayersIcon as Layers,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -16,6 +17,7 @@ import {
   Shield,
   ShoppingCart,
   Tag,
+  Ticket,
   TrendingUp,
   Users,
   Wallet,
@@ -31,6 +33,8 @@ const NAV = [
   { label: "Orders", path: "/admin/orders", icon: ShoppingCart },
   { label: "Products", path: "/admin/products", icon: Package },
   { label: "Promotions", path: "/admin/promotions", icon: Tag },
+  { label: "Coupons", path: "/admin/coupons", icon: Ticket },
+  { label: "Combos", path: "/admin/combos", icon: Layers },
   { label: "Wallets", path: "/admin/wallets", icon: Wallet },
   { label: "Affiliates", path: "/admin/affiliates", icon: Users },
   { label: "Support", path: "/admin/support", icon: MessageSquare },
@@ -150,41 +154,52 @@ export default function AdminDashboard() {
         <div className="p-3 border-t border-border/50 space-y-1">
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground"
-            data-ocid="admin.sidebar.link"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            data-ocid="admin.sidebar.user_dashboard.link"
           >
-            <LayoutDashboard className="w-3.5 h-3.5" /> User Dashboard
+            <LayoutDashboard className="w-4 h-4" />
+            User Dashboard
           </Link>
           <button
             type="button"
-            onClick={logout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive w-full transition-colors"
-            data-ocid="admin.logout.button"
+            onClick={() => {
+              logout();
+              navigate({ to: "/admin-login" });
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            data-ocid="admin.sidebar.logout.button"
           >
-            <LogOut className="w-4 h-4" /> Logout
+            <LogOut className="w-4 h-4" />
+            Logout
           </button>
         </div>
       </aside>
 
+      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          aria-hidden="true"
-          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
-          onKeyDown={() => setSidebarOpen(false)}
+          onKeyDown={(e) => e.key === "Escape" && setSidebarOpen(false)}
+          role="button"
+          tabIndex={-1}
+          aria-label="Close sidebar"
         />
       )}
 
-      <div className="flex-1 lg:ml-60 min-h-screen flex flex-col">
+      {/* Main content */}
+      <div className="flex-1 flex flex-col lg:ml-60">
+        {/* Top bar */}
         <header
-          className="h-14 border-b border-border/40 flex items-center px-5 gap-4"
-          style={{ background: "oklch(0.09 0.012 252 / 0.9)" }}
+          className="h-16 border-b border-border flex items-center px-4 lg:px-6 gap-3"
+          style={{ background: "oklch(0.09 0.012 252 / 0.8)" }}
         >
           <button
             type="button"
-            className="lg:hidden p-1.5 text-muted-foreground"
-            onClick={() => setSidebarOpen((v) => !v)}
-            data-ocid="admin.toggle"
+            className="lg:hidden p-2 rounded-lg hover:bg-secondary text-muted-foreground"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle sidebar"
+            data-ocid="admin.sidebar.toggle"
           >
             {sidebarOpen ? (
               <X className="w-5 h-5" />
@@ -192,23 +207,20 @@ export default function AdminDashboard() {
               <Menu className="w-5 h-5" />
             )}
           </button>
-          <div className="text-sm font-semibold text-foreground">
-            Admin &mdash;{" "}
-            {NAV.find(
-              (n) =>
-                n.path === currentPath ||
-                (n.path !== "/admin" && currentPath.startsWith(n.path)),
-            )?.label || "Overview"}
+          <div className="flex-1" />
+          <div className="text-xs text-muted-foreground">
+            PropFolio Admin Panel
           </div>
         </header>
-        <main className="flex-1 p-5 lg:p-8">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0, transition: { duration: 0.35 } }}
-          >
-            <Outlet />
-          </motion.div>
-        </main>
+
+        <motion.main
+          className="flex-1 p-4 lg:p-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+          <Outlet />
+        </motion.main>
       </div>
     </div>
   );
