@@ -19,139 +19,6 @@ import {
 } from "../hooks/useTrialQueries";
 import { type Combo, loadCombos } from "../lib/combos";
 
-const STATIC_PRODUCTS: ProductCardData[] = [
-  {
-    id: 1n,
-    name: "PropFolio Professional Traders Suite",
-    description:
-      "Manual execution suite with advanced risk management tools for serious prop traders.",
-    platform: "cTrader / MT4 / MT5",
-    tier: "EA",
-    price: 30,
-    features: [
-      "Visual Risk Management (VRR)",
-      "Smart Hedging",
-      "News Embargo Guard",
-      "Tilt/Psychology Lock",
-    ],
-    isActive: true,
-    addonPrice: 20,
-    hasInstructions: true,
-  },
-  {
-    id: 2n,
-    name: "PropFolio Peak Formation Dashboard",
-    description:
-      "Identify market peaks and formations with precision using advanced pattern recognition.",
-    platform: "MT4/MT5/cTrader",
-    tier: "Indicator",
-    price: 25,
-    features: [
-      "Peak Formation Detection",
-      "Multi-Timeframe Analysis",
-      "Alert System",
-      "Dashboard View",
-    ],
-    isActive: true,
-  },
-  {
-    id: 3n,
-    name: "PropFolio SMC Powerhouse",
-    description:
-      "Smart Money Concepts indicator suite for institutional-level market analysis.",
-    platform: "MT4/MT5/cTrader",
-    tier: "Indicator",
-    price: 25,
-    features: [
-      "Order Block Detection",
-      "Fair Value Gaps",
-      "Break of Structure",
-      "Change of Character",
-    ],
-    isActive: true,
-  },
-  {
-    id: 4n,
-    name: "PropFolio Advanced Currency Strength",
-    description:
-      "Real-time currency strength meter for identifying the strongest trading pairs.",
-    platform: "MT4/MT5/cTrader",
-    tier: "Indicator",
-    price: 20,
-    features: [
-      "Real-Time Strength Meter",
-      "8 Major Currencies",
-      "Visual Heat Map",
-      "Trend Confirmation",
-    ],
-    isActive: true,
-  },
-  {
-    id: 5n,
-    name: "PropFolio GOLD RUSH",
-    description:
-      "Fully automated EA optimized for XAUUSD gold trading with intelligent risk controls.",
-    platform: "MT4/MT5",
-    tier: "EA",
-    price: 49,
-    features: [
-      "Fully Automated",
-      "Gold-Optimized Algorithm",
-      "Smart Stop Loss",
-      "News Filter",
-    ],
-    isActive: false,
-  },
-  {
-    id: 6n,
-    name: "PropFolio Liquidity Sweeps",
-    description:
-      "Detect and trade institutional liquidity sweeps before major price movements.",
-    platform: "MT4/MT5/cTrader",
-    tier: "Indicator",
-    price: 29,
-    features: [
-      "Liquidity Zone Mapping",
-      "Sweep Detection",
-      "Entry Signals",
-      "Risk Zones",
-    ],
-    isActive: false,
-  },
-  {
-    id: 7n,
-    name: "PropFolio Sentiment Analysis",
-    description:
-      "Market sentiment dashboard powered by real-time data feeds and positioning data.",
-    platform: "MT4/MT5/cTrader",
-    tier: "Indicator",
-    price: 35,
-    features: [
-      "Market Sentiment Gauge",
-      "COT Data Integration",
-      "Retail vs Institutional",
-      "Trend Bias",
-    ],
-    isActive: false,
-  },
-  {
-    id: 8n,
-    name: "PropFolio Universal IndicatorEA",
-    description:
-      "The ultimate hybrid indicator and EA that adapts to any market condition automatically.",
-    platform: "MT4/MT5/cTrader",
-    tier: "EA",
-    price: 59,
-    features: [
-      "Hybrid Indicator+EA",
-      "Auto-Adaptive Algorithm",
-      "Multi-Market Support",
-      "Cloud Sync",
-    ],
-    isActive: false,
-  },
-];
-
 const PLATFORM_FILTERS = ["All", "cTrader", "MT4", "MT5"] as const;
 const TYPE_FILTERS = ["All", "Indicator", "EA", "Cbot"] as const;
 
@@ -213,23 +80,21 @@ export default function ProductsPage() {
   }, [trialSettingsRaw]);
 
   const allProducts: ProductCardData[] = useMemo(() => {
-    if (backendProducts && backendProducts.length > 0) {
-      return backendProducts.map(([id, p]) => ({
-        id,
-        name: p.name,
-        description: p.description,
-        platform: p.platform,
-        tier: p.tier,
-        price: p.price,
-        features: p.features,
-        isActive: p.isActive,
-        lifetimePrice: lifetimePriceMap.get(id) ?? 0,
-        addonPrice: 20,
-        trialEnabled: trialSettingsMap.get(id)?.trialEnabled ?? false,
-        trialDurationDays: trialSettingsMap.get(id)?.trialDurationDays ?? 7,
-      }));
-    }
-    return STATIC_PRODUCTS;
+    if (!backendProducts) return [];
+    return backendProducts.map(([id, p]) => ({
+      id,
+      name: p.name,
+      description: p.description,
+      platform: p.platform,
+      tier: p.tier,
+      price: p.price,
+      features: p.features,
+      isActive: p.isActive,
+      lifetimePrice: lifetimePriceMap.get(id) ?? 0,
+      addonPrice: 20,
+      trialEnabled: trialSettingsMap.get(id)?.trialEnabled ?? false,
+      trialDurationDays: trialSettingsMap.get(id)?.trialDurationDays ?? 7,
+    }));
   }, [backendProducts, lifetimePriceMap, trialSettingsMap]);
 
   const filtered = useMemo(() => {
@@ -237,7 +102,6 @@ export default function ProductsPage() {
       const platMatch =
         platformFilter === "All" ||
         p.platform.toLowerCase().includes(platformFilter.toLowerCase());
-      // Hide lifetime-only filter: if user selected lifetime, only show products with lifetimePrice set
       if (
         billingCycle === "lifetime" &&
         !(p.lifetimePrice && p.lifetimePrice > 0)
@@ -258,7 +122,6 @@ export default function ProductsPage() {
     >
       {/* ===== HERO ===== */}
       <section className="relative pt-28 pb-20 px-4 overflow-hidden candlestick-bg">
-        {/* Radial glow behind hero text */}
         <div
           className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[420px] pointer-events-none"
           style={{
@@ -268,7 +131,6 @@ export default function ProductsPage() {
         />
 
         <div className="max-w-5xl mx-auto relative z-10 text-center">
-          {/* Eyebrow */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -316,7 +178,6 @@ export default function ProductsPage() {
             Built for serious prop traders.
           </motion.p>
 
-          {/* Stats row */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -374,7 +235,6 @@ export default function ProductsPage() {
         data-ocid="products.filter.panel"
       >
         <div className="max-w-5xl mx-auto flex flex-wrap items-center gap-4">
-          {/* Billing Toggle */}
           <div
             className="flex items-center gap-1 p-1 rounded-full"
             style={{
@@ -427,10 +287,8 @@ export default function ProductsPage() {
             ))}
           </div>
 
-          {/* Spacer on larger screens */}
           <div className="hidden md:block flex-1" />
 
-          {/* Platform filters */}
           <div className="flex items-center gap-1.5">
             <Filter className="w-3.5 h-3.5 text-muted-foreground" />
             <div className="flex gap-1">
@@ -462,7 +320,6 @@ export default function ProductsPage() {
             </div>
           </div>
 
-          {/* Type filters */}
           <div className="flex gap-1">
             {TYPE_FILTERS.map((t) => (
               <button
@@ -555,7 +412,7 @@ export default function ProductsPage() {
           <div className="flex flex-wrap gap-3">
             {featuredCombos.map((combo) => {
               const total = combo.productNames.reduce((s, n) => {
-                const p = STATIC_PRODUCTS.find((x) => x.name === n);
+                const p = allProducts.find((x) => x.name === n);
                 return s + (p?.price ?? 0);
               }, 0);
               const discounted =
@@ -626,19 +483,23 @@ export default function ProductsPage() {
                 <Filter className="w-7 h-7 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground font-medium">
-                No tools match your current filters.
+                {backendProducts === undefined
+                  ? "Loading products…"
+                  : "No tools match your current filters."}
               </p>
-              <button
-                type="button"
-                className="mt-4 text-sm font-semibold flex items-center gap-1 mx-auto"
-                style={{ color: "oklch(0.72 0.135 185)" }}
-                onClick={() => {
-                  setPlatformFilter("All");
-                  setTypeFilter("All");
-                }}
-              >
-                Clear filters <ChevronRight className="w-4 h-4" />
-              </button>
+              {backendProducts !== undefined && (
+                <button
+                  type="button"
+                  className="mt-4 text-sm font-semibold flex items-center gap-1 mx-auto"
+                  style={{ color: "oklch(0.72 0.135 185)" }}
+                  onClick={() => {
+                    setPlatformFilter("All");
+                    setTypeFilter("All");
+                  }}
+                >
+                  Clear filters <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
             </motion.div>
           ) : (
             <AnimatePresence mode="popLayout">

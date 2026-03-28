@@ -223,3 +223,20 @@ export function useDeleteDownloadableFile() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["downloadableFiles"] }),
   });
 }
+
+// ─── Transfer Admin Principal ─────────────────────────────────────────────────
+export function useTransferAdminPrincipal() {
+  const { actor } = useActor();
+  return useMutation({
+    mutationFn: async ({
+      newUsername,
+      newPrincipalText,
+    }: { newUsername: string; newPrincipalText: string }) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).transferAdminPrincipal(
+        newUsername,
+        newPrincipalText,
+      );
+    },
+  });
+}

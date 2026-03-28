@@ -224,6 +224,7 @@ export interface backendInterface {
     reassignLicense(licenseId: bigint, newUserPrincipal: string): Promise<void>;
     rejectOrder(orderId: bigint): Promise<void>;
     removeAdminAccount(principalText: string): Promise<void>;
+    transferAdminPrincipal(newUsername: string, newPrincipalText: string): Promise<void>;
     revokeLicense(licenseId: bigint): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveDownloadableFile(file: DownloadableFile): Promise<void>;
@@ -769,6 +770,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.removeAdminAccount(arg0);
+            return result;
+        }
+    }
+    async transferAdminPrincipal(arg0: string, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.transferAdminPrincipal(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.transferAdminPrincipal(arg0, arg1);
             return result;
         }
     }

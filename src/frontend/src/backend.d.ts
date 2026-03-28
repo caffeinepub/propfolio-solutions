@@ -139,6 +139,7 @@ export interface backendInterface {
     reassignLicense(licenseId: bigint, newUserPrincipal: string): Promise<void>;
     rejectOrder(orderId: bigint): Promise<void>;
     removeAdminAccount(principalText: string): Promise<void>;
+    transferAdminPrincipal(newUsername: string, newPrincipalText: string): Promise<void>;
     revokeLicense(licenseId: bigint): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveDownloadableFile(file: DownloadableFile): Promise<void>;

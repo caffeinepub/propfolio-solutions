@@ -15,7 +15,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +28,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Check, Edit, Loader2, Plus, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Product } from "../../backend";
 import {
@@ -46,13 +45,136 @@ import {
 } from "../../hooks/useTrialQueries";
 
 const PLATFORMS = ["MT4", "MT5", "cTrader"];
-const TIERS = ["PropLite", "PropTrader", "PropPro", "PropEnterprise"];
+const TIERS = ["EA", "Indicator", "Cbot"];
+
+const DEFAULT_SEED_PRODUCTS: Product[] = [
+  {
+    name: "PropFolio Professional Traders Suite",
+    description:
+      "Manual execution suite with advanced risk management tools for serious prop traders.",
+    platform: "cTrader / MT4 / MT5",
+    tier: "EA",
+    price: 30,
+    features: [
+      "Visual Risk Management (VRR)",
+      "Smart Hedging",
+      "News Embargo Guard",
+      "Tilt/Psychology Lock",
+    ],
+    isActive: true,
+  },
+  {
+    name: "PropFolio Peak Formation Dashboard",
+    description:
+      "Identify market peaks and formations with precision using advanced pattern recognition.",
+    platform: "MT4/MT5/cTrader",
+    tier: "Indicator",
+    price: 25,
+    features: [
+      "Peak Formation Detection",
+      "Multi-Timeframe Analysis",
+      "Alert System",
+      "Dashboard View",
+    ],
+    isActive: true,
+  },
+  {
+    name: "PropFolio SMC Powerhouse",
+    description:
+      "Smart Money Concepts indicator suite for institutional-level market analysis.",
+    platform: "MT4/MT5/cTrader",
+    tier: "Indicator",
+    price: 25,
+    features: [
+      "Order Block Detection",
+      "Fair Value Gaps",
+      "Break of Structure",
+      "Change of Character",
+    ],
+    isActive: true,
+  },
+  {
+    name: "PropFolio Advanced Currency Strength",
+    description:
+      "Real-time currency strength meter for identifying the strongest trading pairs.",
+    platform: "MT4/MT5/cTrader",
+    tier: "Indicator",
+    price: 20,
+    features: [
+      "Real-Time Strength Meter",
+      "8 Major Currencies",
+      "Visual Heat Map",
+      "Trend Confirmation",
+    ],
+    isActive: true,
+  },
+  {
+    name: "PropFolio GOLD RUSH",
+    description:
+      "Fully automated EA optimized for XAUUSD gold trading with intelligent risk controls.",
+    platform: "MT4/MT5",
+    tier: "EA",
+    price: 49,
+    features: [
+      "Fully Automated",
+      "Gold-Optimized Algorithm",
+      "Smart Stop Loss",
+      "News Filter",
+    ],
+    isActive: false,
+  },
+  {
+    name: "PropFolio Liquidity Sweeps",
+    description:
+      "Detect and trade institutional liquidity sweeps before major price movements.",
+    platform: "MT4/MT5/cTrader",
+    tier: "Indicator",
+    price: 29,
+    features: [
+      "Liquidity Zone Mapping",
+      "Sweep Detection",
+      "Entry Signals",
+      "Risk Zones",
+    ],
+    isActive: false,
+  },
+  {
+    name: "PropFolio Sentiment Analysis",
+    description:
+      "Market sentiment dashboard powered by real-time data feeds and positioning data.",
+    platform: "MT4/MT5/cTrader",
+    tier: "Indicator",
+    price: 35,
+    features: [
+      "Market Sentiment Gauge",
+      "COT Data Integration",
+      "Retail vs Institutional",
+      "Trend Bias",
+    ],
+    isActive: false,
+  },
+  {
+    name: "PropFolio Universal IndicatorEA",
+    description:
+      "The ultimate hybrid indicator and EA that adapts to any market condition automatically.",
+    platform: "MT4/MT5/cTrader",
+    tier: "EA",
+    price: 59,
+    features: [
+      "Hybrid Indicator+EA",
+      "Auto-Adaptive Algorithm",
+      "Multi-Market Support",
+      "Cloud Sync",
+    ],
+    isActive: false,
+  },
+];
 
 const emptyProduct = (): Partial<Product> => ({
   name: "",
   description: "",
   platform: "MT4",
-  tier: "PropLite",
+  tier: "EA",
   price: 49,
   features: [],
   isActive: true,
@@ -76,6 +198,34 @@ export default function AdminProducts() {
   const [lifetimePriceInput, setLifetimePriceInput] = useState<string>("");
   const [trialEnabled, setTrialEnabled] = useState(false);
   const [trialDurationDays, setTrialDurationDays] = useState<string>("7");
+  const [seeding, setSeeding] = useState(false);
+  const seededRef = useRef(false);
+
+  // Auto-seed default products when backend is empty
+  useEffect(() => {
+    if (seededRef.current) return;
+    if (isLoading) return;
+    if (products === undefined) return;
+    if (products.length !== 0) return;
+
+    seededRef.current = true;
+    setSeeding(true);
+
+    const seed = async () => {
+      try {
+        for (const p of DEFAULT_SEED_PRODUCTS) {
+          await createProduct.mutateAsync(p);
+        }
+        toast.success("Default products seeded — you can now edit them here.");
+      } catch {
+        toast.error("Failed to seed default products");
+      } finally {
+        setSeeding(false);
+      }
+    };
+
+    seed();
+  }, [isLoading, products, createProduct]);
 
   const openCreate = () => {
     setEditId(null);
@@ -127,7 +277,7 @@ export default function AdminProducts() {
       name: form.name!,
       description: form.description ?? "",
       platform: form.platform ?? "MT4",
-      tier: form.tier ?? "PropLite",
+      tier: form.tier ?? "EA",
       price: form.price!,
       features: form.features ?? [],
       isActive: form.isActive ?? true,
@@ -135,7 +285,6 @@ export default function AdminProducts() {
     try {
       if (editId !== null) {
         await updateProduct.mutateAsync({ id: editId, product });
-        // Save lifetime price separately
         const ltPrice = lifetimePriceInput
           ? Number.parseFloat(lifetimePriceInput)
           : 0;
@@ -151,7 +300,6 @@ export default function AdminProducts() {
         toast.success("Product updated!");
       } else {
         const newId = await createProduct.mutateAsync(product);
-        // Save lifetime price for new product
         const ltPrice = lifetimePriceInput
           ? Number.parseFloat(lifetimePriceInput)
           : 0;
@@ -211,12 +359,17 @@ export default function AdminProducts() {
         </Button>
       </div>
 
-      {isLoading ? (
+      {isLoading || seeding ? (
         <div
-          className="flex items-center justify-center py-16"
+          className="flex flex-col items-center justify-center py-16 gap-3"
           data-ocid="admin.products.loading_state"
         >
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          {seeding && (
+            <p className="text-sm text-muted-foreground">
+              Seeding default products…
+            </p>
+          )}
         </div>
       ) : (products?.length ?? 0) === 0 ? (
         <div
@@ -413,10 +566,10 @@ export default function AdminProducts() {
               </div>
               <div>
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
-                  Tier
+                  Type
                 </Label>
                 <Select
-                  value={form.tier ?? "PropLite"}
+                  value={form.tier ?? "EA"}
                   onValueChange={(v) => setForm((f) => ({ ...f, tier: v }))}
                 >
                   <SelectTrigger
@@ -462,14 +615,7 @@ export default function AdminProducts() {
               <Input
                 type="number"
                 value={lifetimePriceInput}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    lifetimePrice: e.target.value
-                      ? Number.parseFloat(e.target.value)
-                      : undefined,
-                  }))
-                }
+                onChange={(e) => setLifetimePriceInput(e.target.value)}
                 placeholder="e.g. 299 (optional)"
                 className="bg-secondary border-border"
                 data-ocid="admin.products.lifetime_price.input"

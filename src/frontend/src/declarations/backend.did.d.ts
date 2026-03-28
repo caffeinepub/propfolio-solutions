@@ -149,6 +149,7 @@ export interface _SERVICE {
   'reassignLicense' : ActorMethod<[bigint, string], undefined>,
   'rejectOrder' : ActorMethod<[bigint], undefined>,
   'removeAdminAccount' : ActorMethod<[string], undefined>,
+  'transferAdminPrincipal' : ActorMethod<[string, string], undefined>,
   'revokeLicense' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveDownloadableFile' : ActorMethod<[DownloadableFile], undefined>,

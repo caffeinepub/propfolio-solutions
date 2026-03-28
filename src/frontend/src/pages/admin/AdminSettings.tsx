@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangle,
   Check,
@@ -44,6 +45,7 @@ import type {
   SiteSettings,
 } from "../../backend";
 import { LicenseStatus } from "../../backend";
+import { useAdminPasswordAuth } from "../../hooks/useAdminPasswordAuth";
 import {
   useAddAdminAccount,
   useExtendLicense,
@@ -57,6 +59,7 @@ import {
   useRevokeLicense,
   useSavePaymentGatewaySettings,
   useSaveSiteSettings,
+  useTransferAdminPrincipal,
 } from "../../hooks/useAdminSettingsQueries";
 import { useGetAllProducts } from "../../hooks/useQueries";
 import {
@@ -74,22 +77,41 @@ function formatDate(ts: bigint) {
   return new Date(Number(ts) / 1_000_000).toLocaleDateString();
 }
 
-// ─── Admin Accounts Tab ───────────────────────────────────────────────────────
+async function deriveAdminPrincipal(
+  username: string,
+  password: string,
+): Promise<string> {
+  const { Ed25519KeyIdentity } = await import("@dfinity/identity");
+  const combined = `${username}:${password}`;
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(combined),
+  );
+  const seed = new Uint8Array(hashBuffer);
+  const identity = Ed25519KeyIdentity.generate(seed);
+  return identity.getPrincipal().toString();
+}
+
+// ─── Admin Accounts Tab ─────────────────────────────────────────────────────────
 function AdminAccountsTab() {
   const { data: accounts, isLoading } = useGetAdminAccounts();
   const addAccount = useAddAdminAccount();
   const removeAccount = useRemoveAdminAccount();
-  const [form, setForm] = useState({ username: "", principalText: "" });
+  const [form, setForm] = useState({ username: "", password: "" });
 
   const handleAdd = async () => {
-    if (!form.username.trim() || !form.principalText.trim()) {
-      toast.error("Username and principal ID are required");
+    if (!form.username.trim() || !form.password.trim()) {
+      toast.error("Username and password are required");
       return;
     }
     try {
-      await addAccount.mutateAsync(form);
+      const principalText = await deriveAdminPrincipal(
+        form.username,
+        form.password,
+      );
+      await addAccount.mutateAsync({ username: form.username, principalText });
       toast.success("Admin account added successfully");
-      setForm({ username: "", principalText: "" });
+      setForm({ username: "", password: "" });
     } catch {
       toast.error("Failed to add admin account");
     }
@@ -135,15 +157,16 @@ function AdminAccountsTab() {
           </div>
           <div>
             <Label className="text-xs text-muted-foreground mb-1.5 block">
-              Principal ID
+              Password
             </Label>
             <Input
-              value={form.principalText}
+              type="password"
+              value={form.password}
               onChange={(e) =>
-                setForm((f) => ({ ...f, principalText: e.target.value }))
+                setForm((f) => ({ ...f, password: e.target.value }))
               }
-              placeholder="e.g. aaaaa-aa..."
-              className="bg-secondary border-border font-mono text-xs"
+              placeholder="Set password for this admin"
+              className="bg-secondary border-border"
               data-ocid="admin.accounts.input"
             />
           </div>
@@ -240,6 +263,141 @@ function AdminAccountsTab() {
           </Table>
         )}
       </div>
+
+      {/* Change Password */}
+      <ChangePasswordSection />
+    </div>
+  );
+}
+
+// ─── Change My Credentials Section ───────────────────────────────────────────
+function ChangePasswordSection() {
+  const { adminLogout } = useAdminPasswordAuth();
+  const transferCredentials = useTransferAdminPrincipal();
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    newUsername: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [isPending, setIsPending] = useState(false);
+
+  const handleChange = async () => {
+    if (!form.newUsername.trim()) {
+      toast.error("New username is required");
+      return;
+    }
+    if (form.newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    if (form.newPassword !== form.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setIsPending(true);
+    try {
+      const newPrincipalText = await deriveAdminPrincipal(
+        form.newUsername,
+        form.newPassword,
+      );
+      await transferCredentials.mutateAsync({
+        newUsername: form.newUsername,
+        newPrincipalText,
+      });
+      toast.success(
+        "Credentials updated. Please log in again with your new credentials.",
+      );
+      setTimeout(() => {
+        adminLogout();
+        navigate({ to: "/admin-login" });
+      }, 2000);
+    } catch {
+      toast.error("Failed to update credentials. Please try again.");
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return (
+    <div
+      className="rounded-xl border border-border p-5"
+      style={{ background: "oklch(0.115 0.022 245)" }}
+      data-ocid="admin.change_password.panel"
+    >
+      <h3 className="text-sm font-bold text-foreground mb-1 flex items-center gap-2">
+        <Key className="w-4 h-4" style={{ color: "oklch(0.71 0.115 72)" }} />
+        Change Your Admin Credentials
+      </h3>
+      <p className="text-xs text-muted-foreground mb-4">
+        Set a new username and password for your admin account. You will be
+        logged out after the change.
+      </p>
+      <div className="grid sm:grid-cols-2 gap-4 mb-4">
+        <div className="sm:col-span-2">
+          <Label className="text-xs text-muted-foreground mb-1.5 block">
+            New Username
+          </Label>
+          <Input
+            value={form.newUsername}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, newUsername: e.target.value }))
+            }
+            placeholder="Enter new username"
+            className="bg-secondary border-border"
+            data-ocid="admin.change_password.input"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1.5 block">
+            New Password
+          </Label>
+          <Input
+            type="password"
+            value={form.newPassword}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, newPassword: e.target.value }))
+            }
+            placeholder="Min. 6 characters"
+            className="bg-secondary border-border"
+            data-ocid="admin.change_password.input"
+          />
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground mb-1.5 block">
+            Confirm New Password
+          </Label>
+          <Input
+            type="password"
+            value={form.confirmPassword}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, confirmPassword: e.target.value }))
+            }
+            placeholder="Repeat new password"
+            className="bg-secondary border-border"
+            data-ocid="admin.change_password.input"
+          />
+        </div>
+      </div>
+      <Button
+        onClick={handleChange}
+        disabled={isPending}
+        className="gap-2 font-semibold"
+        style={{
+          background: "oklch(0.71 0.115 72)",
+          color: "oklch(0.065 0.009 258)",
+        }}
+        data-ocid="admin.change_password.submit_button"
+      >
+        {isPending ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Key className="w-4 h-4" />
+        )}
+        Update My Credentials
+      </Button>
     </div>
   );
 }

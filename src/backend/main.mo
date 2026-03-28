@@ -590,6 +590,31 @@ actor {
     adminAccountStore.remove(targetPrincipal);
   };
 
+  // Transfer admin to new credentials - atomically replaces caller's admin role with a new principal
+  public shared ({ caller }) func transferAdminPrincipal(newUsername : Text, newPrincipalText : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can transfer admin credentials");
+    };
+    let newAdminPrincipal = Principal.fromText(newPrincipalText);
+    if (newAdminPrincipal.isAnonymous()) {
+      Runtime.trap("Cannot use anonymous principal as admin");
+    };
+    if (newAdminPrincipal == caller) {
+      Runtime.trap("New principal must be different from current");
+    };
+    // Add new principal as admin
+    AccessControl.assignRole(accessControlState, caller, newAdminPrincipal, #admin);
+    let newAccount : AdminAccount = {
+      username = newUsername;
+      principalId = newPrincipalText;
+      createdAt = Time.now();
+    };
+    adminAccountStore.add(newAdminPrincipal, newAccount);
+    // Remove caller from admin
+    AccessControl.assignRole(accessControlState, caller, caller, #user);
+    adminAccountStore.remove(caller);
+  };
+
   // Admin Password Setup - allows first-time admin registration without Caffeine token
   public shared ({ caller }) func setupFirstAdmin(principalText : Text) : async () {
     if (accessControlState.adminAssigned) {

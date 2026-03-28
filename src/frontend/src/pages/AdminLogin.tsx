@@ -10,10 +10,24 @@ import { useAdminPasswordAuth } from "../hooks/useAdminPasswordAuth";
 export default function AdminLogin() {
   const { adminLogin } = useAdminPasswordAuth();
   const navigate = useNavigate();
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  function getFriendlyError(err: any): string {
+    const msg: string = err?.message ?? "";
+    if (msg.includes("stopped") || msg.includes("IC0508")) {
+      return "The service is temporarily unavailable. Please wait a moment and try again.";
+    }
+    if (
+      msg.includes("Invalid credentials") ||
+      msg.includes("invalid credentials")
+    ) {
+      return "Invalid username or password.";
+    }
+    return "Login failed. Please try again.";
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,10 +53,10 @@ export default function AdminLogin() {
       if (isAdmin) {
         navigate({ to: "/admin" });
       } else {
-        setError("Invalid credentials. Please try again.");
+        setError("Invalid username or password.");
       }
     } catch (err: any) {
-      setError(err?.message ?? "Login failed. Please try again.");
+      setError(getFriendlyError(err));
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +141,7 @@ export default function AdminLogin() {
               <Input
                 id="admin-username"
                 type="text"
-                placeholder="admin"
+                placeholder="Enter username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="rounded-xl border-border/60 bg-background/50 focus:border-primary"
@@ -184,23 +198,6 @@ export default function AdminLogin() {
                 "Login to Admin Panel"
               )}
             </Button>
-
-            <div
-              className="rounded-xl border border-border/50 p-4 text-xs text-muted-foreground"
-              style={{ background: "oklch(0.09 0.012 252)" }}
-            >
-              <p className="font-semibold text-foreground mb-1">
-                🔑 Default Credentials
-              </p>
-              <p>
-                Username:{" "}
-                <span className="text-foreground font-mono">admin</span>
-              </p>
-              <p>
-                Password:{" "}
-                <span className="text-foreground font-mono">admin123</span>
-              </p>
-            </div>
           </form>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
